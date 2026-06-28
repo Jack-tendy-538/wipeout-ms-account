@@ -1,31 +1,33 @@
 # util.py
 import subprocess
-import sys
+import sys ,re, argparse
 import urllib.parse
 from dataclasses import dataclass, field
-from shutil import rmtree, unlink
+from shutil import rmtree
+from os import unlink
 import win32com.client
-import win32event
-import win32process
-import win32con
+import win32event,win32process,win32con
 # import win32com.client.gencache as gencache
 import win32com.shell.shell as shell
+import requests
+from tkinter import BooleanVar
 from typing import Any, Callable, Dict, List, Optional, Tuple
-
+from pathlib import Path
+from webbrowser import open as open_url
 @dataclass
 class Category:
     name: str
     items: List["Item"] = field(default_factory=list)
     errors: List[Tuple[str, str, str]] = field(default_factory=list)
-    checked: bool = True
+    checked: BooleanVar = field(default_factory=lambda: BooleanVar(value=True))
 
     def __repr__(self) -> str:
-        return f"Category(name={self.name!r}, items={len(self.items)}, checked={self.checked})"
+        return f"Category(name={self.name!r}, items={len(self.items)}, checked={self.checked.get()})"
 
     def toggle(self) -> None:
-        self.checked = not self.checked
+        self.checked.set(not self.checked.get())
         for item in self.items:
-            item.checked = self.checked
+            item.checked.set(self.checked.get())
 
     def add_item(self, item: "Item") -> "Item":
         self.items.append(item)
@@ -37,7 +39,7 @@ class Item:
     name: str
     links: Dict[str, str] = field(default_factory=dict)
     icon: Optional[str] = None
-    checked: bool = True
+    checked: BooleanVar = field(default_factory=lambda: BooleanVar(value=True))
     is_error: bool = False
     strategies: List[Tuple[str, Callable[..., Any]]] = field(default_factory=list)
     use_strategy: int = 0
@@ -46,10 +48,10 @@ class Item:
         self.category.add_item(self)
 
     def __repr__(self) -> str:
-        return f"Item(name={self.name!r}, checked={self.checked}, strategies={len(self.strategies)})"
+        return f"Item(name={self.name!r}, checked={self.checked.get()}, strategies={len(self.strategies)})"
 
     def toggle(self) -> None:
-        self.checked = not self.checked
+        self.checked.set(not self.checked.get())
 
     def add_strategy(self, strategy_name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -65,7 +67,17 @@ class Item:
         return wrapper
 
 # 实用函数
-
+def download_icon(url: str, save_path: str) -> None:
+    """下载图标"""
+    try:
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        with open(save_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        return save_path
+    except Exception as e:
+        raise RuntimeError(f"Failed to download icon from '{url}': {e}")
 def is_admin():
     try:
         return shell.IsUserAnAdmin()
@@ -118,3 +130,46 @@ def call_url(url):
 		raise RuntimeError(f"Failed to open URL '{url}': {e.stderr.decode('utf-8')}")
 
 dispatch = win32com.client.Dispatch
+
+# 命令行操作
+def create_cat(name):
+    with open("strategies\\%s.py"%name,"w") as fp:
+        fp.write(f"""
+# {name}.py
+# 在这里输入你的描述
+from ..util import Category, Item
+from ..util import dispatch,invoke,unlink
+
+{name}_cat = Category("{name}")
+## 在这里注册你的Item
+        """)
+
+def add_new_cat_to_init_file(name):
+    init_file = Path("strategies") / "__init__.py"
+    # 如果已经存在则不重复添加
+    init_text = init_file.read_text(encoding='utf-8')
+    import_line = f'    __import__("{name}", fromlist=["{name}"]).{name}_cat,\n'
+    if import_line.strip() in init_text:
+        return
+    # 尝试在末尾的列表前插入，如果找不到则追加到文件末尾
+    # 假设 __all__ 或 CATS 列表存在于文件中，简单实现：在最后一行前插入，否则追加
+    lines = init_text.splitlines(keepends=True)
+    for i in range(len(lines)-1, -1, -1):
+        if lines[i].strip().endswith(',') or lines[i].strip().endswith(']'):
+            # 在此行之前插入新导入
+            lines.insert(i+1, import_line)
+            init_file.write_text(''.join(lines), encoding='utf-8')
+            return
+    # 回退：追加
+    with init_file.open('a', encoding='utf-8') as f:
+        f.write('\n' + import_line)
+
+def new_cat(name):
+    create_cat(name)
+    add_new_cat_to_init_file(name)
+
+def main():
+    parser = argparse.ArgumentParser(usage="util.py:帮助在项目中添加category")
+    parser.add_argument("name", help="category name")
+    args = parser.parse_args()
+    new_cat(args.name)
