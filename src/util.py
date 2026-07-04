@@ -7,19 +7,29 @@ from shutil import rmtree
 from os import unlink
 import win32com.client
 import win32event,win32process,win32con
-# import win32com.client.gencache as gencache
+import win32com.client.gencache as gencache
 import win32com.shell.shell as shell
 import requests
-from tkinter import BooleanVar
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from pathlib import Path
 from webbrowser import open as open_url
+
+class BoolVar:
+    def __init__(self, value: bool = False) -> None:
+        self._value = bool(value)
+
+    def get(self) -> bool:
+        return self._value
+
+    def set(self, value: bool) -> None:
+        self._value = bool(value)
+
 @dataclass
 class Category:
     name: str
     items: List["Item"] = field(default_factory=list)
     errors: List[Tuple[str, str, str]] = field(default_factory=list)
-    checked: BooleanVar = field(default_factory=lambda: BooleanVar(value=True))
+    checked: BoolVar = field(default_factory=lambda: BoolVar(value=True))
 
     def __repr__(self) -> str:
         return f"Category(name={self.name!r}, items={len(self.items)}, checked={self.checked.get()})"
@@ -33,13 +43,18 @@ class Category:
         self.items.append(item)
         return item
 
+    def execute(self):
+        for item in self.items:
+            if item.checked.get():
+                item.execute()
+
 @dataclass
 class Item:
     category: Category
     name: str
     links: Dict[str, str] = field(default_factory=dict)
     icon: Optional[str] = None
-    checked: BooleanVar = field(default_factory=lambda: BooleanVar(value=True))
+    checked: BoolVar = field(default_factory=lambda: BoolVar(value=True))
     is_error: bool = False
     strategies: List[Tuple[str, Callable[..., Any]]] = field(default_factory=list)
     use_strategy: int = 0
@@ -65,6 +80,13 @@ class Item:
             self.strategies.append((strategy_name, no_traceback))
             return no_traceback
         return wrapper
+
+    def execute(self):
+        if self.checked.get():
+            if self.use_strategy < 0 or self.use_strategy >= len(self.strategies):
+                raise ValueError(f"Invalid strategy index {self.use_strategy} for item {self.name}")
+            strategy_name, strategy_func = self.strategies[self.use_strategy]
+            return strategy_func()
 
 # 实用函数
 def download_icon(url: str, save_path: str) -> None:
@@ -137,8 +159,8 @@ def create_cat(name):
         fp.write(f"""
 # {name}.py
 # 在这里输入你的描述
-from ..util import Category, Item
-from ..util import dispatch,invoke,unlink
+from util import Category, Item
+from util import dispatch,invoke,unlink
 
 {name}_cat = Category("{name}")
 ## 在这里注册你的Item
@@ -173,3 +195,6 @@ def main():
     parser.add_argument("name", help="category name")
     args = parser.parse_args()
     new_cat(args.name)
+
+if __name__ == "__main__":
+    main()

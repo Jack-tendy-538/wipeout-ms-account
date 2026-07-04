@@ -1,12 +1,12 @@
 # windows_logout.py
 # 退登Windows系统
-from ..util import Category,Item
-from ..util import dispatch,invoke,unlink
+from util import Category,Item
+from util import dispatch,invoke,unlink
 
 win_cat = Category("Windows")
 
 # regedit
-regedit = Item(win_cat, "注册表")
+regedit = Item(win_cat, "注册表",links={"文档": "https://docs.microsoft.com/zh-cn/windows/win32/sysinfo/registry-functions"})
 
 @regedit.add_strategy("用命令行删除凭证")
 def disregcmd():

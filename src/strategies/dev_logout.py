@@ -1,7 +1,7 @@
 # dev_logout.py
 # 退登诸如VS Code、Visual Studio与Git等与开发有关的软件
-from ..util import Category,Item
-from ..util import dispatch,invoke,unlink
+from util import Category,Item
+from util import dispatch,invoke,unlink
 
 dev_cat = Category("开发")
 # Git
