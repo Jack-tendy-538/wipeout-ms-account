@@ -58,6 +58,21 @@ class ChooseWindow:
                 all_checked = all(item.checked.get() for item in self.category.items)
                 self.category.checked.set(all_checked)
 
+        def on_strategy_selected(self, event: tkinter.Event):
+            selected = self.strategy_var.get()
+            self.set_selected_strategy(selected)
+
+        def set_selected_strategy(self, strategy_name: str):
+            self.obj.selected_strategy = strategy_name
+            self.obj.selected_strategy_fn = None
+            for name, fn in self.obj.strategies:
+                if name == strategy_name:
+                    self.obj.selected_strategy_fn = fn
+                    break
+
+        def sync_selected_strategy(self):
+            self.set_selected_strategy(self.strategy_var.get())
+
         def render(self):
             self.frame = ttk.Frame(self.root, padding=5)
             self.frame.pack(fill=tkinter.X, padx=10, pady=5)
@@ -67,14 +82,22 @@ class ChooseWindow:
             if self.obj.icon:
                 ttk.Label(self.frame, image=tkinter.PhotoImage(file=util.download_icon(self.obj.icon))).pack(side=tkinter.LEFT, padx=5)
             ttk.Label(self.frame, text=self.obj.name).pack(side=tkinter.LEFT, padx=5)
-            ttk.Combobox(self.frame, values=self.strategies, state="readonly").pack(side=tkinter.LEFT, padx=5)
+            self.strategy_var = tkinter.StringVar(value=self.strategies[0] if self.strategies else "")
+            if self.strategies:
+                self.set_selected_strategy(self.strategies[0])
+            self.strategy_combobox = ttk.Combobox(self.frame, values=self.strategies, state="readonly", textvariable=self.strategy_var)
+            self.strategy_combobox.bind("<<ComboboxSelected>>", self.on_strategy_selected)
+            self.strategy_combobox.pack(side=tkinter.LEFT, padx=5)
+            self.strategy_var.trace_add("write", lambda *args: self.sync_selected_strategy())
             for link_name, link_url in self.obj.links.items():
-                ttk.Label(self.frame, text=link_name, foreground="blue", cursor="hand2").pack(side=tkinter.LEFT, padx=5)
-                self.frame.bind("<Button-1>", lambda e, url=link_url: util.open_link(url))
+                link_label = ttk.Label(self.frame, text=link_name, foreground="blue", cursor="hand2")
+                link_label.pack(side=tkinter.LEFT, padx=5)
+                link_label.bind("<Button-1>", lambda e, url=link_url: util.open_link(url))
     @dataclass
     class CategoryFrame:
         obj: util.Category
         root: ttk.Frame
+        item_frames: List["ChooseWindow.ItemFrame"] = field(default_factory=list, repr=False)
 
         def on_category_toggle(self):
             checked = self.obj.checked.get()
@@ -82,6 +105,7 @@ class ChooseWindow:
                 item.checked.set(checked)
 
         def render(self):
+            self.item_frames = []
             self.frame = ttk.LabelFrame(self.root, text=self.obj.name, padding=10)
             self.frame.pack(fill=tkinter.X, padx=10, pady=5)
             ttk.Checkbutton(self.frame, text="", variable=self.obj.checked, command=self.on_category_toggle).pack(side=tkinter.LEFT)
@@ -89,16 +113,28 @@ class ChooseWindow:
             for item in self.obj.items:
                 item_frame = ChooseWindow.ItemFrame(item, self.frame, category=self.obj)
                 item_frame.render()
+                self.item_frames.append(item_frame)
+
+        def sync_selected_strategies(self):
+            for item_frame in self.item_frames:
+                item_frame.sync_selected_strategy()
     @dataclass
     class MainFrame:
         root: tkinter.Tk
         categories: List[util.Category]
+        category_frames: List["ChooseWindow.CategoryFrame"] = field(default_factory=list, repr=False)
         def render(self):
+            self.category_frames = []
             self.frame = ttk.Frame(self.root, padding=10)
             self.frame.pack(fill=tkinter.BOTH, expand=True)
             for category in self.categories:
                 category_frame = ChooseWindow.CategoryFrame(category, self.frame)
                 category_frame.render()
+                self.category_frames.append(category_frame)
+
+        def sync_selected_strategies(self):
+            for category_frame in self.category_frames:
+                category_frame.sync_selected_strategies()
     def __init__(self):
         self.root = tkinter.Tk()
         self.root.title("Choose Items")
@@ -109,21 +145,21 @@ class ChooseWindow:
         ttk.Button(self.root, text="Run", command=self.on_run).pack(pady=10)
 
     def on_run(self):
+        self.main_frame.sync_selected_strategies()
         self.run()
 
     def run(self):
         selected_items = []
         for category in self.main_frame.categories:
-            if category.checked.get():
-                for item in category.items:
-                    if item.checked.get():
-                        selected_items.append(item)
+            for item in category.items:
+                if item.checked.get():
+                    selected_items.append(item)
         if not selected_items:
             messagebox.showwarning("No Items Selected", "Please select at least one item to run.")
             return
         self.root.destroy()
         run_window = RunWindow(selected_items)
-        run_window.run()
+        run_window.root.mainloop()
 
 class RunWindow:
     def __init__(self, items: List[util.Item]):
@@ -147,6 +183,7 @@ class RunWindow:
             item.execute()
         self.progress.stop()
         messagebox.showinfo("Run Complete", "All selected items have been executed.")
+        self.root.destroy()
 
 def main():
     agreement_window = UserAgreementWindow()

@@ -54,7 +54,7 @@ class Item:
     name: str
     links: Dict[str, str] = field(default_factory=dict)
     icon: Optional[str] = None
-    checked: BoolVar = field(default_factory=lambda: BoolVar(value=True))
+    checked: BoolVar = field(default_factory=lambda: BoolVar(value=False))
     is_error: bool = False
     strategies: List[Tuple[str, Callable[..., Any]]] = field(default_factory=list)
     use_strategy: int = 0
@@ -121,41 +121,49 @@ def restart_as_admin():
     else:
         sys.exit(1)
 
-def invoke(command,admin=False):
-	"""运行命令行命令"""
-	try:
-		if admin:
-			params = " ".join(['"%s"' % (x,) for x in sys.argv])
-			procInfo = shell.ShellExecuteEx(lpVerb='runas',
-										   lpFile=sys.executable,
-										   lpParameters=params,
-										   nShow=win32con.SW_SHOWNORMAL)
-			hProcess = procInfo.get('hProcess')
-			if hProcess:
-				win32event.WaitForSingleObject(hProcess, win32event.INFINITE)
-				rc = win32process.GetExitCodeProcess(hProcess)
-				sys.exit(rc)
-			else:
-				sys.exit(1)
-		else:
-			result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-			return result.stdout.decode('utf-8')
-	except subprocess.CalledProcessError as e:
-		raise RuntimeError(f"Command '{command}' failed with error: {e.stderr.decode('utf-8')}")
+def invoke(command, admin=False):
+    """运行命令行命令"""
+    try:
+        if admin:
+            # 以管理员权限运行 cmd.exe 并执行 command
+            procInfo = shell.ShellExecuteEx(
+                lpVerb='runas',
+                lpFile='cmd.exe',
+                lpParameters=f'/c {command}',
+                nShow=win32con.SW_HIDE  # 隐藏黑窗，或者用 SW_SHOWNORMAL 显示
+            )
+            hProcess = procInfo.get('hProcess')
+            if hProcess:
+                win32event.WaitForSingleObject(hProcess, win32event.INFINITE)
+                rc = win32process.GetExitCodeProcess(hProcess)
+                return rc  # 返回退出码（0通常代表成功）
+            else:
+                raise RuntimeError("Failed to get process handle for admin command")
+        else:
+            result = subprocess.run(command, shell=True, check=True, 
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            return result.stdout.decode('utf-8', errors='ignore')
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Command '{command}' failed: {e.stderr.decode('utf-8', errors='ignore')}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to execute '{command}': {e}")
 
 def call_url(url):
-	"""调用url"""
-	try:
-		# 使用start命令打开url
-		subprocess.run(f'start "" "{url}"', shell=True, check=True)
-	except subprocess.CalledProcessError as e:
-		raise RuntimeError(f"Failed to open URL '{url}': {e.stderr.decode('utf-8')}")
+    """调用url"""
+    try:
+        # 使用start命令打开url
+        subprocess.run(f'start "" "{url}"', shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to open URL '{url}': {e.stderr.decode('utf-8')}")
 
 dispatch = win32com.client.Dispatch
 
 # 命令行操作
 def create_cat(name):
-    with open("strategies\\%s.py"%name,"w") as fp:
+    strategies_dir = Path("strategies")
+    strategies_dir.mkdir(parents=True, exist_ok=True)
+    file_path = strategies_dir / f"{name}.py"
+    with file_path.open("wb") as fp:
         fp.write(f"""
 # {name}.py
 # 在这里输入你的描述
@@ -164,10 +172,13 @@ from util import dispatch,invoke,unlink
 
 {name}_cat = Category("{name}")
 ## 在这里注册你的Item
-        """)
+        """.encode('utf-8'))
 
 def add_new_cat_to_init_file(name):
     init_file = Path("strategies") / "__init__.py"
+    init_file.parent.mkdir(parents=True, exist_ok=True)
+    if not init_file.exists():
+        init_file.write_text("# strategies package\n", encoding='utf-8')
     # 如果已经存在则不重复添加
     init_text = init_file.read_text(encoding='utf-8')
     import_line = f'    __import__("{name}", fromlist=["{name}"]).{name}_cat,\n'
@@ -192,7 +203,7 @@ def new_cat(name):
 
 def main():
     parser = argparse.ArgumentParser(usage="util.py:帮助在项目中添加category")
-    parser.add_argument("name", help="category name")
+    parser.add_argument("-new-cat", help="category name", dest="name")
     args = parser.parse_args()
     new_cat(args.name)
 
