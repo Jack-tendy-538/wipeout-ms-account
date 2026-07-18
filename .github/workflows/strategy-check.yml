@@ -1,0 +1,122 @@
+name: Copilot 策略审查
+
+on:
+  push:
+    paths:
+      - 'src/strategies/**.py'
+  pull_request:
+    paths:
+      - 'src/strategies/**.py'
+
+jobs:
+  review-strategies:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write   # 可选，用于在 PR 中留下审查意见
+    env:
+      COPILOT_API_URL: https://api.github.com/copilot/chat/completions
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 获取完整历史用于 diff
+
+      - name: 获取最近修改的策略文件
+        id: changed-files
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA=${{ github.event.pull_request.base.sha }}
+            git diff --name-only $BASE_SHA...HEAD -- src/strategies/ | grep '\.py$' > changed.txt || true
+          else
+            git diff --name-only HEAD~1 -- src/strategies/ | grep '\.py$' > changed.txt || true
+          fi
+          # 转换成 JSON 数组供后续步骤使用
+          echo "files=$(jq -R -s -c 'split("\n") | map(select(length>0))' changed.txt)" >> $GITHUB_OUTPUT
+          echo "file_count=$(wc -l < changed.txt)" >> $GITHUB_OUTPUT
+
+      - name: 逐文件调用 Copilot 评估可行性与安全性
+        id: review
+        if: steps.changed-files.outputs.file_count > 0
+        run: |
+          echo "待审查文件：${{ steps.changed-files.outputs.files }}"
+          PASS=true
+
+          # 遍历每个文件
+          for file in $(echo '${{ steps.changed-files.outputs.files }}' | jq -r '.[]'); do
+            echo "::group::审查 $file"
+            # 读取文件内容（注意避免特殊字符问题，用 base64 传输更安全）
+            CONTENT=$(cat "$file" | base64 -w0)
+
+            # 可行性和安全性分别发送请求，确保评分互不干扰
+            for metric in feasibility safety; do
+              if [ "$metric" = "feasibility" ]; then
+                PROMPT="请分析以下策略代码的可行性，给出1到5的整数评分（5为最可行）。仅输出以下JSON格式，不要其他文字：
+                {
+                  \"file\": \"$file\",
+                  \"feasibility_score\": 整数
+                }"
+              else
+                PROMPT="请分析以下策略代码的安全性，给出1到5的整数评分（5为最安全）。仅输出以下JSON格式，不要其他文字：
+                {
+                  \"file\": \"$file\",
+                  \"safety_score\": 整数
+                }"
+              fi
+
+              # 构造请求体，注意内容需要 base64 解码后嵌入
+              REQUEST_BODY=$(jq -n \
+                --arg prompt "$PROMPT" \
+                --arg content "$(echo "$CONTENT" | base64 -d)" \
+                '{
+                  model: "gpt-4",
+                  messages: [
+                    {role: "user", content: ($prompt + "\n\n代码内容：\n" + $content)}
+                  ],
+                  temperature: 0.2,
+                  max_tokens: 150
+                }')
+
+              # 调用 Copilot Chat API
+              RESPONSE=$(curl -s -X POST "$COPILOT_API_URL" \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                -H "Content-Type: application/json" \
+                -d "$REQUEST_BODY")
+
+              # 提取 assistant 返回的内容
+              ASSISTANT_MSG=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+
+              if [ -z "$ASSISTANT_MSG" ]; then
+                echo "::error file=$file::Copilot API 调用失败或返回为空"
+                PASS=false
+                continue 2  # 跳出当前文件循环，继续下一个文件
+              fi
+
+              # 从回复中提取评分（假设严格返回JSON）
+              SCORE=$(echo "$ASSISTANT_MSG" | jq -r ".${metric}_score // empty")
+
+              if [ -z "$SCORE" ]; then
+                echo "::warning file=$file::无法解析 ${metric} 评分，原始回复：$ASSISTANT_MSG"
+                SCORE=0
+              fi
+
+              echo "$file ${metric}_score = $SCORE"
+
+              if [ "$SCORE" -le 3 ]; then
+                echo "::error file=$file::${metric} 评分 $SCORE 未大于 3，审查不通过"
+                PASS=false
+              fi
+            done
+            echo "::endgroup::"
+          done
+
+          if [ "$PASS" = false ]; then
+            echo "存在评分≤3的文件，工作流失败"
+            exit 1
+          else
+            echo "所有文件评分均大于3，审查通过"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
