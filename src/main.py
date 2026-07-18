@@ -7,7 +7,7 @@ import tkinter.messagebox as messagebox
 import sv_ttk
 
 from strategies import cats
-import util
+import util, text
 
 class UserAgreementWindow:
     def __init__(self):
@@ -17,14 +17,7 @@ class UserAgreementWindow:
         self.render()
 
     def render(self):
-        agreement_text = (
-            "Please read and accept the following user agreement before proceeding:\n\n"
-            "1. You agree to use this software at your own risk.\n"
-            "2. The developers are not responsible for any data loss or damage.\n"
-            "3. You agree to comply with all applicable laws and regulations.\n"
-            "4. This software is provided 'as-is' without any warranties.\n\n"
-            "Do you accept the terms of this agreement?"
-        )
+        agreement_text = text.agreement_text
         self.frame = ttk.Frame(self.root, padding=20)
         self.frame.pack(fill=tkinter.BOTH, expand=True)
         self.text_widget = tkinter.Text(self.frame, wrap=tkinter.WORD, height=15, width=60)
@@ -32,7 +25,7 @@ class UserAgreementWindow:
         self.text_widget.pack(padx=20, pady=20)
 
         self.agreed_var = tkinter.BooleanVar(value=False)
-        self.agreed_checkbox = ttk.Checkbutton(self.root, text="I accept the terms of this agreement", variable=self.agreed_var)
+        self.agreed_checkbox = ttk.Checkbutton(self.root, text=text.agreement_check, variable=self.agreed_var)
         self.agreed_checkbox.pack(pady=10)
         self.ok_button = ttk.Button(self.root, text="OK", command=self.on_ok)
         self.ok_button.pack(pady=10)
@@ -43,7 +36,7 @@ class UserAgreementWindow:
             main_window = ChooseWindow()
             main_window.root.mainloop()
         else:
-            messagebox.showwarning("Agreement Required", "You must accept the user agreement to proceed.")
+            messagebox.showwarning("Agreement Required", text.agreement_warning)
 
 class ChooseWindow:
     @dataclass
@@ -135,14 +128,23 @@ class ChooseWindow:
         def sync_selected_strategies(self):
             for category_frame in self.category_frames:
                 category_frame.sync_selected_strategies()
+
     def __init__(self):
         self.root = tkinter.Tk()
         self.root.title("Choose Items")
         sv_ttk.set_theme("light")
-        ttk.Label(self.root, text="Please choose the items you want to use:").pack(pady=10)
+        ttk.Label(self.root, text=text.head).pack(pady=10)
         self.main_frame = ChooseWindow.MainFrame(self.root, cats)
         self.main_frame.render()
-        ttk.Button(self.root, text="Run", command=self.on_run).pack(pady=10)
+
+        self.info_panel = tkinter.Frame(self.root, padding=10)
+        # with 1 as _:
+        ttk.Label(self.info_panel, text=text.panel).pack(anchor=tkinter.W)
+        ttk.Button(self.info_panel, text=text.panel_issue, command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/issues")).pack(anchor=tkinter.W, pady=5)
+        ttk.Label(self.info_panel, text=text.panel_contrib).pack(anchor=tkinter.W)
+        ttk.Button(self.info_panel, text=text.panel_issue, command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/fork")).pack(anchor=tkinter.W, pady=5)
+
+        ttk.Button(self.root, text=text.run, command=self.on_run).pack(pady=10)
 
     def on_run(self):
         self.main_frame.sync_selected_strategies()
@@ -155,7 +157,7 @@ class ChooseWindow:
                 if item.checked.get():
                     selected_items.append(item)
         if not selected_items:
-            messagebox.showwarning("No Items Selected", "Please select at least one item to run.")
+            messagebox.showwarning("No Items Selected", text.run_warning)
             return
         self.root.destroy()
         run_window = RunWindow(selected_items)
@@ -171,6 +173,7 @@ class RunWindow:
 
     def render(self):
         self.frame = ttk.Frame(self.root, padding=10)
+        ttk.Label(self.frame, text=text.motto).pack(pady=10)
         self.frame.pack(fill=tkinter.BOTH, expand=True)
         ttk.Label(self.frame, text="Running selected items...").pack(pady=10)
         self.progress = ttk.Progressbar(self.frame, mode="indeterminate")
@@ -182,7 +185,7 @@ class RunWindow:
         for item in self.items:
             item.execute()
         self.progress.stop()
-        messagebox.showinfo("Run Complete", "All selected items have been executed.")
+        messagebox.showinfo("Run Complete", text.finish)
         self.root.destroy()
 
 def main():

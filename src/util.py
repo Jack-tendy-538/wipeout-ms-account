@@ -14,6 +14,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from pathlib import Path
 from webbrowser import open as open_url
 
+__ALL__ = ["Category", "Item", "BoolVar", "download_icon", "is_admin", "restart_as_admin", "invoke", "call_url","unlink","remove_tree","open_url"]
+
 class BoolVar:
     def __init__(self, value: bool = False) -> None:
         self._value = bool(value)
@@ -174,32 +176,67 @@ from util import dispatch,invoke,unlink
 ## 在这里注册你的Item
         """.encode('utf-8'))
 
-def add_new_cat_to_init_file(name):
-    init_file = Path("strategies") / "__init__.py"
-    init_file.parent.mkdir(parents=True, exist_ok=True)
-    if not init_file.exists():
-        init_file.write_text("# strategies package\n", encoding='utf-8')
-    # 如果已经存在则不重复添加
-    init_text = init_file.read_text(encoding='utf-8')
-    import_line = f'    __import__("{name}", fromlist=["{name}"]).{name}_cat,\n'
-    if import_line.strip() in init_text:
-        return
-    # 尝试在末尾的列表前插入，如果找不到则追加到文件末尾
-    # 假设 __all__ 或 CATS 列表存在于文件中，简单实现：在最后一行前插入，否则追加
-    lines = init_text.splitlines(keepends=True)
-    for i in range(len(lines)-1, -1, -1):
-        if lines[i].strip().endswith(',') or lines[i].strip().endswith(']'):
-            # 在此行之前插入新导入
-            lines.insert(i+1, import_line)
-            init_file.write_text(''.join(lines), encoding='utf-8')
-            return
-    # 回退：追加
-    with init_file.open('a', encoding='utf-8') as f:
-        f.write('\n' + import_line)
+# def add_new_cat_to_init_file(name):
+    # init_file = Path("strategies") / "__init__.py"
+    # init_file.parent.mkdir(parents=True, exist_ok=True)
+    # if not init_file.exists():
+    #     init_file.write_text("# strategies package\n", encoding='utf-8')
+    # # 如果已经存在则不重复添加
+    # init_text = init_file.read_text(encoding='utf-8')
+    # import_line = f'    __import__("{name}", fromlist=["{name}"]).{name}_cat,\n'
+    # if import_line.strip() in init_text:
+    #     return
+    # # 尝试在末尾的列表前插入，如果找不到则追加到文件末尾
+    # # 假设 __all__ 或 CATS 列表存在于文件中，简单实现：在最后一行前插入，否则追加
+    # lines = init_text.splitlines(keepends=True)
+    # for i in range(len(lines)-1, -1, -1):
+    #     if lines[i].strip().endswith(',') or lines[i].strip().endswith(']'):
+    #         # 在此行之前插入新导入
+    #         lines.insert(i+1, import_line)
+    #         init_file.write_text(''.join(lines), encoding='utf-8')
+    #         return
+    # # 回退：追加
+    # with init_file.open('a', encoding='utf-8') as f:
+    #     f.write('\n' + import_line)
+
+class InitFileModifier:
+    def __init__(self, init_file_path: Path):
+        self.init_file_path = init_file_path
+        self.lines = []
+        self.load()
+
+    def load(self):
+        if self.init_file_path.exists():
+            with self.init_file_path.open('r', encoding='utf-8') as f:
+                self.lines = f.readlines()
+        else:
+            self.lines = ["# strategies package\n"]
+
+    def save(self):
+        with self.init_file_path.open('w', encoding='utf-8') as f:
+            f.writelines(self.lines)
+
+    def add_import(self, name: str):
+        import_line = f'    __import__("{name}", fromlist=["{name}"]).{name}_cat,\n'
+        if any(import_line.strip() == line.strip() for line in self.lines):
+            return  # Already exists
+
+        # Find the last line that ends with ',' or ']'
+        for i in range(len(self.lines) - 1, -1, -1):
+            if self.lines[i].strip().endswith(',') or self.lines[i].strip().endswith(']'):
+                self.lines.insert(i + 1, import_line)
+                self.save()
+                return
+
+        # Fallback: append to the end
+        self.lines.append('\n' + import_line)
+        self.save()
 
 def new_cat(name):
     create_cat(name)
-    add_new_cat_to_init_file(name)
+    init_file = Path("strategies") / "__init__.py"
+    init_modifier = InitFileModifier(init_file)
+    init_modifier.add_import(name)
 
 def main():
     parser = argparse.ArgumentParser(usage="util.py:帮助在项目中添加category")

@@ -13,3 +13,4 @@ requests==2.34.2
 setuptools==82.0.1
 sv_ttk==2.6.1
 urllib3==2.7.0
+pywinauto

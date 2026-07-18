@@ -3,9 +3,9 @@
 <!--水平排列以下元素-->
 <table align="center">
   <tr>
-    <td align="center"><a href="https://pywin32.readthedocs.io/en/stable/"><img src="https://img.shields.io/badge/pywin32-文档-blue?logo=python" alt="pywin32文档"></a></td>
-    <td align="center"><a href="https://docs.microsoft.com/en-us/windows/win32/"><img src="https://img.shields.io/badge/Windows-SDK-blue?logo=windows" alt="Windows SDK"></a></td>
-    <td align="center"><a href="/edit/main/docs/dev.md"><img src="https://img.shields.io/badge/修改-此页-orange?logo=github" alt="修改此页"></a></td>
+    <td align="center"><a href="https://blog.csdn.net/A_art_xiang/article/details/134404369"><img src="https://img.shields.io/badge/pywin32-文档-blue?logo=python" alt="pywin32文档"></a></td>
+    <td align="center"><a href="https://learn.microsoft.com/zh-cn/windows/apps/windows-sdk/downloads"><img src="https://img.shields.io/badge/Windows-SDK-blue?logo=windows" alt="Windows SDK"></a></td>
+    <td align="center"><a href="https://github.com/Jack-tendy-538/wipeout-ms-account/edit/main/docs/dev.md"><img src="https://img.shields.io/badge/修改-此页-orange?logo=github" alt="修改此页"></a></td>
   </tr>
 </table>
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 <details>
 <summary>使用new-cat命令套用模板</summary>
 
-你可以使用`new-cat`命令来创建一个新的分类目录，并套用指定的模板，像这样。
+你可以使用`new-cat`命令来创建一个新的分类目录，并套用指定的模板，像这样，在cmd窗口输入下面的命令，而pwsh窗口则使用`.\new-cat.ps1 <模板名>`。
 ```bash
 new-cat <模板名>
 ```
@@ -55,6 +55,8 @@ def demand():
 ![选择界面](https://forum.smart-teach.cn/assets/files/2026-07-11/1783763130-577124-image.png)
 
 ![执行界面](https://forum.smart-teach.cn/assets/files/2026-07-11/1783763148-964898-image.png)
+
+~~确实有点猎奇~~
 
 </details>
 
