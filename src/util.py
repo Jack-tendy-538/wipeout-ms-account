@@ -1,10 +1,11 @@
 # util.py
-import subprocess
+import subprocess, traceback
 import sys ,re, argparse
 import urllib.parse
 from dataclasses import dataclass, field
 from shutil import rmtree
 from os import unlink
+import ctypes
 import win32com.client
 import win32event,win32process,win32con
 import win32com.client.gencache as gencache
@@ -77,6 +78,7 @@ class Item:
                     return func(*args, **kwargs)
                 except Exception as e:
                     self.is_error = True
+                    self.error_message = str(e)
                     self.category.errors.append((self.name, strategy_name, str(e)))
                     return None
             self.strategies.append((strategy_name, no_traceback))
@@ -91,6 +93,14 @@ class Item:
             return strategy_func()
 
 # 实用函数
+def high_dpi_make():
+    try:
+        # 对于 Windows 8.1 及以上系统，推荐使用 shcore 的 SetProcessDpiAwareness
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)  # 1 代表 PROCESS_SYSTEM_DPI_AWARE
+    except AttributeError:
+        # 对于旧版 Windows (如 Win7)，降级使用 user32 的 SetProcessDPIAware
+        ctypes.windll.user32.SetProcessDPIAware()
+
 def download_icon(url: str, save_path: str) -> None:
     """下载图标"""
     try:
@@ -217,19 +227,72 @@ class InitFileModifier:
             f.writelines(self.lines)
 
     def add_import(self, name: str):
-        import_line = f'    __import__("{name}", fromlist=["{name}"]).{name}_cat,\n'
-        if any(import_line.strip() == line.strip() for line in self.lines):
-            return  # Already exists
+        import_line = f'from .{name} import {name}_cat'
+        # 检查是否已存在
+        if any(import_line in line for line in self.lines):
+            return
 
-        # Find the last line that ends with ',' or ']'
-        for i in range(len(self.lines) - 1, -1, -1):
-            if self.lines[i].strip().endswith(',') or self.lines[i].strip().endswith(']'):
-                self.lines.insert(i + 1, import_line)
-                self.save()
-                return
+        # 1. 插入导入语句（放在最后一个导入之后）
+        last_import = -1
+        for i, line in enumerate(self.lines):
+            stripped = line.strip()
+            if stripped.startswith('from ') or stripped.startswith('import '):
+                last_import = i
+        if last_import != -1:
+            self.lines.insert(last_import + 1, import_line + '\n')
+        else:
+            # 如果没有导入，则插入到文件开头（跳过注释和空行）
+            insert_pos = 0
+            while insert_pos < len(self.lines) and (self.lines[insert_pos].strip() == '' or self.lines[insert_pos].strip().startswith('#')):
+                insert_pos += 1
+            self.lines.insert(insert_pos, import_line + '\n')
 
-        # Fallback: append to the end
-        self.lines.append('\n' + import_line)
+        # 2. 更新 cats 列表
+        # 查找 "cats = [" 所在行
+        cats_start = -1
+        for i, line in enumerate(self.lines):
+            if re.match(r'^\s*cats\s*=\s*\[', line):
+                cats_start = i
+                break
+
+        if cats_start == -1:
+            # 没有 cats 列表，在文件末尾创建
+            self.lines.append('\n')
+            self.lines.append('cats = [\n')
+            self.lines.append(f'    {name}_cat,\n')
+            self.lines.append(']\n')
+        else:
+            # 查找闭合的 ']'
+            # 先检查是否在同一行
+            if ']' in self.lines[cats_start]:
+                # 同一行，在 ']' 前插入新项
+                line = self.lines[cats_start]
+                pos = line.rfind(']')
+                # 插入前确保有逗号
+                before = line[:pos].rstrip()
+                if not before.endswith(','):
+                    new_line = line[:pos] + f', {name}_cat' + line[pos:]
+                else:
+                    new_line = line[:pos] + f' {name}_cat' + line[pos:]
+                self.lines[cats_start] = new_line
+            else:
+                # 多行列表，找到 ']' 所在行
+                closing_index = -1
+                for i in range(cats_start + 1, len(self.lines)):
+                    if ']' in self.lines[i]:
+                        closing_index = i
+                        break
+                if closing_index == -1:
+                    # 没有找到 ']'，直接追加
+                    self.lines.append(f'    {name}_cat,\n')
+                    self.lines.append(']\n')
+                else:
+                    # 在 ']' 前插入新项
+                    prev_line = self.lines[closing_index - 1].rstrip()
+                    if not prev_line.endswith(','):
+                        self.lines[closing_index - 1] = self.lines[closing_index - 1].rstrip() + ',\n'
+                    self.lines.insert(closing_index, f'    {name}_cat,\n')
+
         self.save()
 
 def new_cat(name):

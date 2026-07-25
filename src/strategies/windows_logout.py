@@ -179,3 +179,39 @@ def sign_out_word_strategy():
         messagebox.showinfo("退出登录成功", "已成功退出 Microsoft Word 登录。")
     except Exception as e:
         messagebox.showerror("退出登录失败", f"退出登录 Microsoft Word 失败：{e}")
+
+# msstore
+msstore = Item(win_cat, "Microsoft Store",links={"文档": "https://learn.microsoft.com/zh-cn/sysinternals/downloads/microsoft-store"})
+
+@msstore.add_strategy("从GUI中退登")
+def sign_out_msstore():
+    """退出登录 Microsoft Store"""
+    # 通过可访问性 (UIA) 后端连接到正在运行的 Microsoft Store 进程
+    app = Application(backend="uia").connect(path="WinStore.App.exe")
+    desktop = Desktop(backend="uia")
+
+    # 找到 Microsoft Store 主窗口
+    try:
+        main = desktop.window(class_name="ApplicationFrameWindow", title_re=".*Microsoft Store.*")
+    except Exception:
+        messagebox.showerror("未找到 Microsoft Store 主窗口","没有找到 Microsoft Store 主窗口，请用 Inspect.exe 检查 ClassName/Title。")
+        raise RuntimeError("未找到 Microsoft Store 主窗口")
+
+    # 点击右上角的用户头像按钮
+    try:
+        profile_btn = main.child_window(title_re=".*Profile.*|.*账户.*", control_type="Button")
+        profile_btn.click_input()
+    except Exception:
+        messagebox.showerror("未找到 Profile 按钮","未找到 Profile 按钮，请用 Inspect.exe 确认控件名称。")
+        raise RuntimeError("未找到 Profile 按钮")
+
+    time.sleep(0.8)
+    # 在弹出的菜单中点击 "Sign out" / "退出登录"
+    try:
+        signout = desktop.window(control_type="Menu").child_window(title_re="Sign out|退出", control_type="MenuItem")
+        signout.click_input()
+    except Exception:
+        messagebox.showerror("未找到 Sign out 菜单项","未找到 Sign out 菜单项；请用 Inspect.exe 确认实际名称。")
+        raise RuntimeError("未找到 Sign out 菜单项")
+
+    return True

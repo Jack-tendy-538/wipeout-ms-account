@@ -9,6 +9,8 @@ import sv_ttk
 from strategies import cats
 import util, text
 
+util.hi_dpi_make()
+
 class UserAgreementWindow:
     def __init__(self):
         self.root = tkinter.Tk()
@@ -58,9 +60,10 @@ class ChooseWindow:
         def set_selected_strategy(self, strategy_name: str):
             self.obj.selected_strategy = strategy_name
             self.obj.selected_strategy_fn = None
-            for name, fn in self.obj.strategies:
+            for idx, (name, fn) in enumerate(self.obj.strategies):
                 if name == strategy_name:
                     self.obj.selected_strategy_fn = fn
+                    self.obj.use_strategy = idx   # 添加这一行
                     break
 
         def sync_selected_strategy(self):
@@ -165,6 +168,7 @@ class ChooseWindow:
 
 class RunWindow:
     def __init__(self, items: List[util.Item]):
+        self.log = []
         self.items = items
         self.root = tkinter.Tk()
         self.root.title("Run Items")
@@ -172,18 +176,36 @@ class RunWindow:
         self.render()
 
     def render(self):
+        self.root.geometry("400x260")
+        
         self.frame = ttk.Frame(self.root, padding=10)
         ttk.Label(self.frame, text=text.motto).pack(pady=10)
-        self.frame.pack(fill=tkinter.BOTH, expand=True)
-        ttk.Label(self.frame, text="Running selected items...").pack(pady=10)
+
+        self.log_text = tkinter.Text(self.frame, height=8, wrap=tkinter.WORD, state=tkinter.DISABLED)
+        self.log_text.pack(fill=tkinter.BOTH, expand=True, padx=10, pady=(0,10))
+
         self.progress = ttk.Progressbar(self.frame, mode="indeterminate")
-        self.progress.pack(fill=tkinter.X, padx=10, pady=10)
+        self.progress.pack(fill=tkinter.X, padx=10, pady=5)
         self.progress.start()
+        self.frame.pack(fill=tkinter.BOTH, expand=True)
         self.root.after(100, self.run_items)
+
+    def append_log(self, message: str):
+        self.log.append(message)
+        self.log_text.config(state=tkinter.NORMAL)
+        self.log_text.insert(tkinter.END, message + "\n")
+        self.log_text.see(tkinter.END)
+        self.log_text.config(state=tkinter.DISABLED)
+        self.root.update_idletasks()
 
     def run_items(self):
         for item in self.items:
+            self.append_log(f"正在进行:{item.name}使用的策略:{item.selected_strategy}")
             item.execute()
+            if item.is_error:
+                self.append_log(f"{item.name}失败。错误信息: {item.error_message}")
+            else:
+                self.append_log(f"{item.name}完成。")
         self.progress.stop()
         messagebox.showinfo("Run Complete", text.finish)
         self.root.destroy()
