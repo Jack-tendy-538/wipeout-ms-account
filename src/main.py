@@ -9,7 +9,7 @@ import sv_ttk
 from strategies import cats
 import util, text
 
-util.hi_dpi_make()
+util.high_dpi_make()
 
 class UserAgreementWindow:
     def __init__(self):
@@ -27,7 +27,7 @@ class UserAgreementWindow:
         self.text_widget.pack(padx=20, pady=20)
 
         self.agreed_var = tkinter.BooleanVar(value=False)
-        self.agreed_checkbox = ttk.Checkbutton(self.root, text=text.agreement_check, variable=self.agreed_var)
+        self.agreed_checkbox = ttk.Checkbutton(self.root, text=text.agree_check, variable=self.agreed_var)
         self.agreed_checkbox.pack(pady=10)
         self.ok_button = ttk.Button(self.root, text="OK", command=self.on_ok)
         self.ok_button.pack(pady=10)
@@ -140,7 +140,7 @@ class ChooseWindow:
         self.main_frame = ChooseWindow.MainFrame(self.root, cats)
         self.main_frame.render()
 
-        self.info_panel = tkinter.Frame(self.root, padding=10)
+        self.info_panel = ttk.Frame(self.root, padding=10)
         # with 1 as _:
         ttk.Label(self.info_panel, text=text.panel).pack(anchor=tkinter.W)
         ttk.Button(self.info_panel, text=text.panel_issue, command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/issues")).pack(anchor=tkinter.W, pady=5)

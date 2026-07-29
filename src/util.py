@@ -93,6 +93,7 @@ class Item:
             return strategy_func()
 
 # 实用函数
+open_link = open_url  # 使用 webbrowser.open 打开链接
 def high_dpi_make():
     try:
         # 对于 Windows 8.1 及以上系统，推荐使用 shcore 的 SetProcessDpiAwareness

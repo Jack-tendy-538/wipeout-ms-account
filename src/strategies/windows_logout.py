@@ -171,7 +171,7 @@ def sign_out_word():
 
     return True
 
-@word.add_strategy("从GUI中退登", sign_out_word)
+@word.add_strategy("从GUI中退登")
 def sign_out_word_strategy():
     """退出登录 Microsoft Word"""
     try:

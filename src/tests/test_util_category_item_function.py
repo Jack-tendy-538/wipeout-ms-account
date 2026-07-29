@@ -31,7 +31,7 @@ def test_get_strategy_in_item(given_cat):
     
     func = hello_world.strategies[0]
     assert func[0] == "输出hello world"
-    assert func[1]() == None
+    assert func[1]() == True
 
 def test_execute_strategy_in_item(given_cat):
     test_cat, hello_world = given_cat

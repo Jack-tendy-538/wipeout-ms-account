@@ -1,27 +1,26 @@
-
 agreement_text = (
-            "Please read and accept the following user agreement before proceeding:\n\n"
-            "1. You agree to use this software at your own risk.\n"
-            "2. The developers are not responsible for any data loss or damage.\n"
-            "3. You agree to comply with all applicable laws and regulations.\n"
-            "4. This software is provided 'as-is' without any warranties.\n\n"
-            "Do you accept the terms of this agreement?"
-        )
+    "请在继续之前阅读并接受以下用户协议：\n\n"
+    "1. 您同意自行承担使用本软件的风险。\n"
+    "2. 开发者不对任何数据丢失或损害负责。\n"
+    "3. 您同意遵守所有适用的法律法规。\n"
+    "4. 本软件按“原样”提供，不作任何担保。\n\n"
+    "您是否接受本协议的条款？"
+)
 
-agree_check = "I accept the terms of this agreement"
+agree_check = "我接受本协议的条款"
 
-agreement_warning = "You must accept the user agreement to proceed."
+agreement_warning = "您必须接受用户协议才能继续。"
 
-head = "please select the items you want to use."
+head = "请选择您要使用的项目。"
 
-panel = "Have something not listed?"
-panel_issue = "Submit an issue"
-panel_contrib = "Want to contribute?"
-panel_issue = "Fork my repo"
+panel = "有未列出的内容吗？"
+panel_issue = "提交问题"
+panel_contrib = "想要参与贡献吗？"
+panel_issue = "Fork 本仓库"
 
-run = "Run"
-run_warning = "Please select at least one item to run."
+run = "运行"
+run_warning = "请至少选择一项要运行的项目。"
 
 motto = "钟摆的公平在于从不回头，而人的遗憾则在于总是回望。 --卡夫卡"
 
-finish = "All selected items have been executed."
+finish = "所有选定的项目已执行完毕。"
