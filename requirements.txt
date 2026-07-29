@@ -1,0 +1,17 @@
+﻿altgraph==0.17.5
+certifi==2026.6.17
+charset-normalizer==3.4.7
+idna==3.18
+packaging==26.2
+pefile==2024.8.26
+pillow==12.2.0
+pyinstaller==6.21.0
+pyinstaller-hooks-contrib==2026.6
+pywin32
+pywin32-ctypes==0.2.3
+requests==2.34.2
+setuptools==82.0.1
+sv_ttk==2.6.1
+urllib3==2.7.0
+pywinauto
+pytest==7.4.0
