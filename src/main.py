@@ -9,6 +9,9 @@ import sv_ttk
 from strategies import cats
 import util, text
 
+if not util.is_admin():
+    util.restart_as_admin()
+
 util.high_dpi_make()
 
 class UserAgreementWindow:
