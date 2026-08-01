@@ -1,9 +1,6 @@
 name: Copilot 策略审查 (gh api 版)
 
 on:
-  push:
-    paths:
-      - 'src/strategies/**.py'
   pull_request:
     paths:
       - 'src/strategies/**.py'
@@ -47,7 +44,7 @@ jobs:
 
           for file in $(echo '${{ steps.changed-files.outputs.files }}' | jq -r '.[]'); do
             echo "::group::审查 $file"
-            CONTENT=$(cat "$file" | base64 -w0)
+            CONTENT=$cat "$file"
 
             for metric in feasibility safety; do
               if [ "$metric" = "feasibility" ]; then
