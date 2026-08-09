@@ -102,6 +102,7 @@ def ensure_word_visible():
     word.Visible = True
     return word
 
+@word.add_strategy("从GUI中退登")
 def sign_out_word():
     word = ensure_word_visible()
     # 等待 UI 起来
@@ -170,15 +171,6 @@ def sign_out_word():
         pass
 
     return True
-
-@word.add_strategy("从GUI中退登")
-def sign_out_word_strategy():
-    """退出登录 Microsoft Word"""
-    try:
-        sign_out_word()
-        messagebox.showinfo("退出登录成功", "已成功退出 Microsoft Word 登录。")
-    except Exception as e:
-        messagebox.showerror("退出登录失败", f"退出登录 Microsoft Word 失败：{e}")
 
 # msstore
 msstore = Item(win_cat, "Microsoft Store",links={"文档": "https://learn.microsoft.com/zh-cn/sysinternals/downloads/microsoft-store"})
