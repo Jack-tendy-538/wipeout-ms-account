@@ -77,9 +77,9 @@ class ChooseWindow:
             self.frame.pack(fill=tkinter.X, padx=10, pady=5)
             self.strategies = [s[0] for s in self.obj.strategies]
             # 水平单行排列以下元素：选框（checkbox）、图标（image来自obj.icon）、标签（label显示obj.name）、下拉框（combobox选择strategy）以及可能有的链接
-            ttk.Checkbutton(self.frame, text="", variable=self.obj.checked, command=self.on_item_toggle).pack(side=tkinter.LEFT)
+            ttk.Checkbutton(self.frame, text="", variable=self.obj.checked, command=self.on_item_toggle,state="!disabled"if not self.obj.enabled_to_run else "normal").pack(side=tkinter.LEFT)
             if self.obj.icon:
-                ttk.Label(self.frame, image=tkinter.PhotoImage(file=util.download_icon(self.obj.icon))).pack(side=tkinter.LEFT, padx=5)
+                ttk.Label(self.frame, image=tkinter.PhotoImage(file=self.obj.icon)).pack(side=tkinter.LEFT, padx=5)
             ttk.Label(self.frame, text=self.obj.name).pack(side=tkinter.LEFT, padx=5)
             self.strategy_var = tkinter.StringVar(value=self.strategies[0] if self.strategies else "")
             if self.strategies:
@@ -150,11 +150,20 @@ class ChooseWindow:
         ttk.Label(self.info_panel, text=text.panel_contrib).pack(anchor=tkinter.W)
         ttk.Button(self.info_panel, text=text.panel_issue, command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/fork")).pack(anchor=tkinter.W, pady=5)
 
+        ttk.Button(self.root, text="全选策略", command=self.choose_all_items).pack(pady=10)
+
         ttk.Button(self.root, text=text.run, command=self.on_run).pack(pady=10)
 
     def on_run(self):
         self.main_frame.sync_selected_strategies()
         self.run()
+
+    def choose_all_items(self):
+        for category in self.main_frame.categories:
+            category.checked.set(True)
+            for item in category.items:
+                item.checked.set(True)
+        self.main_frame.sync_selected_strategies()
 
     def run(self):
         selected_items = []
