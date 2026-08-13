@@ -61,6 +61,7 @@ class Item:
     is_error: bool = False
     strategies: List[Tuple[str, Callable[..., Any]]] = field(default_factory=list)
     use_strategy: int = 0
+    enabled_to_run: bool = True
 
     def __post_init__(self) -> None:
         self.category.add_item(self)
@@ -74,16 +75,21 @@ class Item:
     def add_strategy(self, strategy_name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
             def no_traceback(*args: Any, **kwargs: Any) -> Any:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    self.is_error = True
-                    self.error_message = str(e)
+                if self.enabled_to_run:
+                    try:
+                        return func(*args, **kwargs)
+                    except Exception as e:
+                        self.is_error = True
+                        self.error_message = str(e)
                     self.category.errors.append((self.name, strategy_name, str(e)))
                     return None
             self.strategies.append((strategy_name, no_traceback))
             return no_traceback
         return wrapper
+
+    def enable(self,func: Callable[..., Any]):
+        self.enabled_to_run &= func()
+            
 
     def execute(self):
         if self.checked.get():
