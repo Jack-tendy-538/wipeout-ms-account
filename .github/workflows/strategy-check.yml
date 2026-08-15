@@ -33,9 +33,10 @@ jobs:
           else
             git diff --name-only HEAD~1 -- src/strategies/ | grep '\.py$' > changed.txt || true
           fi
-          echo "files=$(jq -R -s -c 'split(\"\\n\") | map(select(length>0))' changed.txt)" >> $GITHUB_OUTPUT
-          echo "file_count=$(wc -l < changed.txt)" >> $GITHUB_OUTPUT
-
+          python diff.py changed.txt > files.json
+          FILE_COUNT=$(jq length files.json)
+          echo "files=$(cat files.json)" >> $GITHUB_OUTPUT
+          echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
   review:
     needs: detect-changed
     if: needs.detect-changed.outputs.file_count != '0'
