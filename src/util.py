@@ -14,6 +14,7 @@ import requests
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from pathlib import Path
 from webbrowser import open as open_url
+import time
 
 __ALL__ = ["Category", "Item", "BoolVar", "download_icon", "is_admin", "restart_as_admin", "invoke", "call_url","unlink","remove_tree","open_url"]
 
@@ -61,7 +62,7 @@ class Item:
     is_error: bool = False
     strategies: List[Tuple[str, Callable[..., Any]]] = field(default_factory=list)
     use_strategy: int = 0
-    enabled_to_run: bool = True
+    allowed: bool = True
 
     def __post_init__(self) -> None:
         self.category.add_item(self)
@@ -74,21 +75,56 @@ class Item:
 
     def add_strategy(self, strategy_name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
-            def no_traceback(*args: Any, **kwargs: Any) -> Any:
-                if self.enabled_to_run:
-                    try:
-                        return func(*args, **kwargs)
-                    except Exception as e:
-                        self.is_error = True
-                        self.error_message = str(e)
-                    self.category.errors.append((self.name, strategy_name, str(e)))
+            def wrapped(*args: Any, **kwargs: Any) -> Any:
+                # ensure flags exist on the item
+                if not hasattr(self, "_pause_requested"):
+                    self._pause_requested = False
+                if not hasattr(self, "_kill_requested"):
+                    self._kill_requested = False
+
+                # If a kill was requested before start, skip immediately
+                if getattr(self, "_kill_requested", False):
                     return None
-            self.strategies.append((strategy_name, no_traceback))
-            return no_traceback
+
+                # started flag prevents later pause from affecting already-started strategy
+                started_attr = "_strategy_started"
+                if not hasattr(self, started_attr):
+                    setattr(self, started_attr, False)
+
+                # Wait while pause requested and the strategy hasn't started yet
+                while getattr(self, "_pause_requested", False) and not getattr(self, started_attr):
+                    if getattr(self, "_kill_requested", False):
+                        return None
+                    time.sleep(0.1)
+
+                if getattr(self, "_kill_requested", False):
+                    return None
+
+                setattr(self, started_attr, True)
+                try:
+                    if self.allowed:
+                        try:
+                            return func(*args, **kwargs)
+                        except Exception as e:
+                            # record error similarly to previous implementation
+                            self.is_error = True
+                            self.error_message = str(e)
+                            self.category.errors.append((self.name, strategy_name, str(e)))
+                            return None
+                    else:
+                        # If not allowed, simply return None (no-op)
+                        return None
+                finally:
+                    # ensure started flag cleared for subsequent runs
+                    setattr(self, started_attr, False)
+
+            # register the wrapped strategy
+            self.strategies.append((strategy_name, wrapped))
+            return wrapped
         return wrapper
 
     def enable(self,func: Callable[..., Any]):
-        self.enabled_to_run &= func()
+        self.allowed &= func()
             
 
     def execute(self):

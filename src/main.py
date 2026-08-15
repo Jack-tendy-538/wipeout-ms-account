@@ -8,6 +8,7 @@ import sv_ttk
 
 from strategies import cats
 import util, text
+import time
 
 if not util.is_admin():
     util.restart_as_admin()
@@ -51,7 +52,9 @@ class ChooseWindow:
         category: Optional["util.Category"] = None
 
         def on_item_toggle(self):
-            self.obj.toggle()
+            # sync checkbox state with the underlying Item.checked variable
+            # avoid toggling here to prevent double-flip; the Checkbutton is
+            # already bound to obj.checked, so just propagate category state
             if self.category is not None:
                 all_checked = all(item.checked.get() for item in self.category.items)
                 self.category.checked.set(all_checked)
@@ -77,9 +80,13 @@ class ChooseWindow:
             self.frame.pack(fill=tkinter.X, padx=10, pady=5)
             self.strategies = [s[0] for s in self.obj.strategies]
             # 水平单行排列以下元素：选框（checkbox）、图标（image来自obj.icon）、标签（label显示obj.name）、下拉框（combobox选择strategy）以及可能有的链接
-            ttk.Checkbutton(self.frame, text="", variable=self.obj.checked, command=self.on_item_toggle,state="!disabled"if not self.obj.enabled_to_run else "normal").pack(side=tkinter.LEFT)
+            # ensure checkbutton is directly bound to the Item.checked variable
+            btn_state = "normal" if getattr(self.obj, "allowed", True) else "disabled"
+            ttk.Checkbutton(self.frame, text="", variable=self.obj.checked, command=self.on_item_toggle, state=btn_state).pack(side=tkinter.LEFT)
             if self.obj.icon:
-                ttk.Label(self.frame, image=tkinter.PhotoImage(file=self.obj.icon)).pack(side=tkinter.LEFT, padx=5)
+                # keep a reference to the PhotoImage to prevent GC
+                self.icon_image = tkinter.PhotoImage(file=self.obj.icon)
+                ttk.Label(self.frame, image=self.icon_image).pack(side=tkinter.LEFT, padx=5)
             ttk.Label(self.frame, text=self.obj.name).pack(side=tkinter.LEFT, padx=5)
             self.strategy_var = tkinter.StringVar(value=self.strategies[0] if self.strategies else "")
             if self.strategies:
@@ -182,10 +189,27 @@ class RunWindow:
     def __init__(self, items: List[util.Item]):
         self.log = []
         self.items = items
+        # control flags manipulated by pause/kill methods
+        for it in self.items:
+            setattr(it, "_pause_requested", False)
+            setattr(it, "_kill_requested", False)
         self.root = tkinter.Tk()
         self.root.title("Run Items")
         sv_ttk.set_theme("light")
         self.render()
+
+    def pause(self):
+        """Pause any strategies that have not yet started for all remaining items."""
+        for it in self.items:
+            # only affect strategies that haven't started
+            it._pause_requested = True
+
+    def kill(self):
+        """Kill (skip) any strategies that have not yet started for all remaining items."""
+        for it in self.items:
+            it._kill_requested = True
+            # un-pause so wrappers can detect kill and exit promptly
+            it._pause_requested = False
 
     def render(self):
         self.root.geometry("400x260")
