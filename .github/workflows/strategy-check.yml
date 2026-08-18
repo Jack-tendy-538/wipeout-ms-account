@@ -37,6 +37,7 @@ jobs:
           FILE_COUNT=$(jq length files.json)
           echo "files=$(cat files.json)" >> $GITHUB_OUTPUT
           echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+
   review:
     needs: detect-changed
     if: needs.detect-changed.outputs.file_count != '0'
@@ -57,7 +58,7 @@ jobs:
       - name: Read file content
         id: read
         run: |
-          echo "content<<'EOF'" >> $GITHUB_OUTPUT
+          echo "content<<EOF" >> $GITHUB_OUTPUT
           cat "${{ matrix.file }}" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
