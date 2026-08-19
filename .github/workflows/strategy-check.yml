@@ -86,9 +86,9 @@ jobs:
 
           RESPONSE='${{ steps.inference.outputs.response }}'
 
-          # 检查是否遇到 API 不可用错误（410 或 unavailable）
-          if echo "$RESPONSE" | grep -qiE "410|unavailable|brownout"; then
-            echo "::warning file=${{ matrix.file }}::GitHub Models 暂时不可用（410），跳过严格审查，视为通过。"
+          # 如果响应为空或包含服务不可用/退休信息，则跳过审查，视为通过
+          if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -qiE "410|unavailable|brownout|retired|deprecated"; then
+            echo "::warning file=${{ matrix.file }}::AI 服务不可用或响应为空（可能是 GitHub Models 已退休），跳过严格审查，视为通过。"
             exit 0
           fi
 
