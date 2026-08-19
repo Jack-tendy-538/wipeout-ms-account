@@ -58,9 +58,9 @@ jobs:
       - name: Read file content
         id: read
         run: |
-          echo "content<<EOF" >> $GITHUB_OUTPUT
-          cat "${{ matrix.file }}" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # 将文件内容转为 JSON 字符串（单行），避免 heredoc 问题
+          content=$(cat "${{ matrix.file }}" | jq -Rsa .)
+          echo "content=$content" >> $GITHUB_OUTPUT
 
       - name: Run AI inference for security & feasibility
         id: inference
