@@ -12,6 +12,8 @@ win_cat = Category("Windows")
 # regedit
 regedit = Item(win_cat, "注册表",links={"文档": "https://docs.microsoft.com/zh-cn/windows/win32/sysinfo/registry-functions"})
 
+regedit.allowed = False
+
 @regedit.add_strategy("用命令行删除凭证")
 def disregcmd():
     r"""把下面的powershell语句翻译成Python即可
