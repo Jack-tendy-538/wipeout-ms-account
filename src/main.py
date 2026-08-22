@@ -52,9 +52,8 @@ class ChooseWindow:
         category: Optional["util.Category"] = None
 
         def on_item_toggle(self):
-            # sync checkbox state with the underlying Item.checked variable
-            # avoid toggling here to prevent double-flip; the Checkbutton is
-            # already bound to obj.checked, so just propagate category state
+            # 同步复选框状态与底层 Item.checked 变量
+            # 此处避免重复翻转；Checkbutton 已绑定 obj.checked，只需传播分类状态
             if self.category is not None:
                 all_checked = all(item.checked.get() for item in self.category.items)
                 self.category.checked.set(all_checked)
@@ -84,7 +83,7 @@ class ChooseWindow:
             btn_state = "normal" if getattr(self.obj, "allowed", True) else "disabled"
             ttk.Checkbutton(self.frame, text="", variable=self.obj.checked, command=self.on_item_toggle, state=btn_state).pack(side=tkinter.LEFT)
             if self.obj.icon:
-                # keep a reference to the PhotoImage to prevent GC
+                # 保持对 PhotoImage 的引用以防止垃圾回收
                 self.icon_image = tkinter.PhotoImage(file=self.obj.icon)
                 ttk.Label(self.frame, image=self.icon_image).pack(side=tkinter.LEFT, padx=5)
             ttk.Label(self.frame, text=self.obj.name).pack(side=tkinter.LEFT, padx=5)
@@ -151,16 +150,14 @@ class ChooseWindow:
         self.main_frame.render()
 
         self.info_panel = ttk.Frame(self.root, padding=10)
-        # with 1 as _:
+        self.info_panel.pack(fill=tkinter.X, padx=10, pady=5)  # 关键修复
         ttk.Label(self.info_panel, text=text.panel).pack(anchor=tkinter.W)
         ttk.Button(self.info_panel, text=text.panel_issue, command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/issues")).pack(anchor=tkinter.W, pady=5)
         ttk.Label(self.info_panel, text=text.panel_contrib).pack(anchor=tkinter.W)
-        ttk.Button(self.info_panel, text=text.panel_issue, command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/fork")).pack(anchor=tkinter.W, pady=5)
+        ttk.Button(self.info_panel, text=text.panel_fork, command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/fork")).pack(anchor=tkinter.W, pady=5)  # 注意第二个按钮文本建议改为 panel_fork
 
-        ttk.Button(self.root, text="全选策略", command=self.choose_all_items).pack(pady=10)
-
+        ttk.Button(self.root, text="全选所有项", command=self.choose_all_items).pack(pady=10)  # 改文本
         ttk.Button(self.root, text=text.run, command=self.on_run).pack(pady=10)
-
     def on_run(self):
         self.main_frame.sync_selected_strategies()
         self.run()
