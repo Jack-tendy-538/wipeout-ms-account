@@ -14,7 +14,7 @@ regedit = Item(win_cat, "注册表",links={"文档": "https://docs.microsoft.com
 
 regedit.allowed = False
 
-@regedit.add_strategy("用命令行删除凭证")
+@regedit.add_strategy("用命令行删除凭证（不安全）")
 def disregcmd():
     r"""把下面的powershell语句翻译成Python即可
     `# 1. 断开工作或学校账户（如果有）
@@ -77,7 +77,14 @@ def disregcmd():
 
     # 删除当前用户的微软账户令牌
     invoke(r'if (Test-Path "$env:LOCALAPPDATA\Microsoft\TokenBroker") { Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\TokenBroker" -Recurse -Force }', admin=True)
-    
+
+# cmdkey
+cmdkey = Item(win_cat,"cmdkey",links={"相关搜索":"https://cn.bing.com/search?q=cmdkey&form=ANNTH1&refig=6a917152ed5a44bd947d58a9d208a82d&pc=U531&adppc=EDGEDBB"})
+
+@cmdkey.add_strategy("从命令行退出cmdkey（实验性）")
+def cmdkey_logout():
+    invoke("cmdkey /delete:server01")
+
 # msedge
 msedge = Item(win_cat, "Microsoft Edge",links={"文档": "https://learn.microsoft.com/zh-cn/microsoft-edge/"
                                                ,"讨论":"https://forum.smart-teach.cn/d/2082-ru-he-che-di-tui-chu-edgezhang-hao-bing-qing-chu-deng-lu-hen-ji/16"})
