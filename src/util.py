@@ -33,7 +33,7 @@ class Category:
     name: str
     items: List["Item"] = field(default_factory=list)
     errors: List[Tuple[str, str, str]] = field(default_factory=list)
-    checked: BoolVar = field(default_factory=lambda: BoolVar(value=False))  # 默认不选中
+    checked: BoolVar = field(default_factory=lambda: BoolVar(value=True))
 
     def __repr__(self) -> str:
         return f"Category(name={self.name!r}, items={len(self.items)}, checked={self.checked.get()})"

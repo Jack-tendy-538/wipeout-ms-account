@@ -8,6 +8,7 @@ import sv_ttk
 
 from strategies import cats
 import util, text
+from viewmodels import ChooseViewModel
 import time
 
 if not util.is_admin():
@@ -44,96 +45,105 @@ class UserAgreementWindow:
         else:
             messagebox.showwarning("Agreement Required", text.agreement_warning)
 
+# main.py 中的 ChooseWindow 部分（含嵌套类）
+# 需确保已导入：tkinter, ttk, sv_ttk, util, text, ChooseViewModel
+
 class ChooseWindow:
     @dataclass
     class ItemFrame:
         obj: util.Item
         root: ttk.Frame
+        viewmodel: "ChooseViewModel"          # 传入 ViewModel
         category: Optional["util.Category"] = None
 
         def on_item_toggle(self):
-            # 同步复选框状态与底层 Item.checked 变量
-            # 此处避免重复翻转；Checkbutton 已绑定 obj.checked，只需传播分类状态
-            if self.category is not None:
-                all_checked = all(item.checked.get() for item in self.category.items)
-                self.category.checked.set(all_checked)
+            # 调用 ViewModel 同步类别全选状态
+            self.viewmodel.toggle_item(self.obj)
 
         def on_strategy_selected(self, event: tkinter.Event):
             selected = self.strategy_var.get()
-            self.set_selected_strategy(selected)
-
-        def set_selected_strategy(self, strategy_name: str):
-            self.obj.selected_strategy = strategy_name
-            self.obj.selected_strategy_fn = None
-            for idx, (name, fn) in enumerate(self.obj.strategies):
-                if name == strategy_name:
-                    self.obj.selected_strategy_fn = fn
-                    self.obj.use_strategy = idx   # 添加这一行
-                    break
+            self.viewmodel.set_item_strategy(self.obj, selected)
 
         def sync_selected_strategy(self):
-            self.set_selected_strategy(self.strategy_var.get())
+            # 将当前下拉框的值同步到条目对象
+            self.viewmodel.set_item_strategy(self.obj, self.strategy_var.get())
 
         def render(self):
             self.frame = ttk.Frame(self.root, padding=5)
             self.frame.pack(fill=tkinter.X, padx=10, pady=5)
             self.strategies = [s[0] for s in self.obj.strategies]
-            # 水平单行排列以下元素：选框（checkbox）、图标（image来自obj.icon）、标签（label显示obj.name）、下拉框（combobox选择strategy）以及可能有的链接
-            # ensure checkbutton is directly bound to the Item.checked variable
             btn_state = "normal" if getattr(self.obj, "allowed", True) else "disabled"
-            ttk.Checkbutton(self.frame, text="", variable=self.obj.checked, command=self.on_item_toggle, state=btn_state).pack(side=tkinter.LEFT)
+            ttk.Checkbutton(
+                self.frame, text="", variable=self.obj.checked,
+                command=self.on_item_toggle, state=btn_state
+            ).pack(side=tkinter.LEFT)
             if self.obj.icon:
-                # 保持对 PhotoImage 的引用以防止垃圾回收
                 self.icon_image = tkinter.PhotoImage(file=self.obj.icon)
                 ttk.Label(self.frame, image=self.icon_image).pack(side=tkinter.LEFT, padx=5)
             ttk.Label(self.frame, text=self.obj.name).pack(side=tkinter.LEFT, padx=5)
+
             self.strategy_var = tkinter.StringVar(value=self.strategies[0] if self.strategies else "")
             if self.strategies:
-                self.set_selected_strategy(self.strategies[0])
-            self.strategy_combobox = ttk.Combobox(self.frame, values=self.strategies, state="readonly", textvariable=self.strategy_var)
+                # 设置默认策略
+                self.viewmodel.set_item_strategy(self.obj, self.strategies[0])
+            self.strategy_combobox = ttk.Combobox(
+                self.frame, values=self.strategies, state="readonly",
+                textvariable=self.strategy_var
+            )
             self.strategy_combobox.bind("<<ComboboxSelected>>", self.on_strategy_selected)
             self.strategy_combobox.pack(side=tkinter.LEFT, padx=5)
             self.strategy_var.trace_add("write", lambda *args: self.sync_selected_strategy())
+
             for link_name, link_url in self.obj.links.items():
                 link_label = ttk.Label(self.frame, text=link_name, foreground="blue", cursor="hand2")
                 link_label.pack(side=tkinter.LEFT, padx=5)
                 link_label.bind("<Button-1>", lambda e, url=link_url: util.open_link(url))
+
     @dataclass
     class CategoryFrame:
         obj: util.Category
         root: ttk.Frame
-        item_frames: List["ChooseWindow.ItemFrame"] = field(default_factory=list, repr=False)
+        viewmodel: "ChooseViewModel"          # 传入 ViewModel
+        item_frames: List["ChooseWindow.ItemFrame"] = field(default_factory=list)
 
         def on_category_toggle(self):
-            checked = self.obj.checked.get()
-            for item in self.obj.items:
-                item.checked.set(checked)
+            self.viewmodel.toggle_category(self.obj)
 
         def render(self):
             self.item_frames = []
             self.frame = ttk.LabelFrame(self.root, text=self.obj.name, padding=10)
             self.frame.pack(fill=tkinter.X, padx=10, pady=5)
-            ttk.Checkbutton(self.frame, text="", variable=self.obj.checked, command=self.on_category_toggle).pack(side=tkinter.LEFT)
+            ttk.Checkbutton(
+                self.frame, text="", variable=self.obj.checked,
+                command=self.on_category_toggle
+            ).pack(side=tkinter.LEFT)
             ttk.Label(self.frame, text=self.obj.name).pack(side=tkinter.LEFT, padx=5)
             for item in self.obj.items:
-                item_frame = ChooseWindow.ItemFrame(item, self.frame, category=self.obj)
+                item_frame = ChooseWindow.ItemFrame(
+                    item, self.frame, viewmodel=self.viewmodel, category=self.obj
+                )
                 item_frame.render()
                 self.item_frames.append(item_frame)
 
         def sync_selected_strategies(self):
             for item_frame in self.item_frames:
                 item_frame.sync_selected_strategy()
+
     @dataclass
     class MainFrame:
         root: tkinter.Tk
         categories: List[util.Category]
-        category_frames: List["ChooseWindow.CategoryFrame"] = field(default_factory=list, repr=False)
+        viewmodel: "ChooseViewModel"          # 传入 ViewModel
+        category_frames: List["ChooseWindow.CategoryFrame"] = field(default_factory=list)
+
         def render(self):
             self.category_frames = []
             self.frame = ttk.Frame(self.root, padding=10)
             self.frame.pack(fill=tkinter.BOTH, expand=True)
             for category in self.categories:
-                category_frame = ChooseWindow.CategoryFrame(category, self.frame)
+                category_frame = ChooseWindow.CategoryFrame(
+                    category, self.frame, viewmodel=self.viewmodel
+                )
                 category_frame.render()
                 self.category_frames.append(category_frame)
 
@@ -141,40 +151,58 @@ class ChooseWindow:
             for category_frame in self.category_frames:
                 category_frame.sync_selected_strategies()
 
+    @dataclass
+    class MainMenu:
+        root:tkinter.Tk
+        def render(self):
+            self.menubar = tkinter.Menu(self.root)
+            self.root.config(menu=self.menubar)
+            self.file_menu = tkinter.Menu(self.menubar, tearoff=0)
+            self.file_menu.add_command(label=text.menu_exit, command=self.root.quit)
+            self.menubar.add_cascade(label=text.menu_file, menu=self.file_menu)
+            self.select_menu = tkinter.Menu(self.menubar, tearoff=0)
+            self.select_menu.add_command(label=text.menu_select_all, command=ChooseViewModel.select_all)
+            self.select_menu.add_cascade(label=text.menu_select_category, menu=self.select_menu)
+    
     def __init__(self):
         self.root = tkinter.Tk()
-        self.root.title("Choose Items")
+        self.root.title("选择窗口")
         sv_ttk.set_theme("light")
         ttk.Label(self.root, text=text.head).pack(pady=10)
-        self.main_frame = ChooseWindow.MainFrame(self.root, cats)
+
+        # 创建 ViewModel 并传递给 UI 框架
+        self.viewmodel = ChooseViewModel(cats)
+        self.main_frame = ChooseWindow.MainFrame(
+            self.root, cats, viewmodel=self.viewmodel
+        )
         self.main_frame.render()
 
         self.info_panel = ttk.Frame(self.root, padding=10)
-        self.info_panel.pack(fill=tkinter.X, padx=10, pady=5)  # 关键修复
         ttk.Label(self.info_panel, text=text.panel).pack(anchor=tkinter.W)
-        ttk.Button(self.info_panel, text=text.panel_issue, command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/issues")).pack(anchor=tkinter.W, pady=5)
+        ttk.Button(
+            self.info_panel, text=text.panel_issue,
+            command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/issues")
+        ).pack(anchor=tkinter.W, pady=5)
         ttk.Label(self.info_panel, text=text.panel_contrib).pack(anchor=tkinter.W)
-        ttk.Button(self.info_panel, text=text.panel_fork, command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/fork")).pack(anchor=tkinter.W, pady=5)  # 注意第二个按钮文本建议改为 panel_fork
+        ttk.Button(
+            self.info_panel, text=text.panel_issue,
+            command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/fork")
+        ).pack(anchor=tkinter.W, pady=5)
 
-        ttk.Button(self.root, text="全选所有项", command=self.choose_all_items).pack(pady=10)  # 改文本
+        ttk.Button(self.root, text="全选策略", command=self.choose_all_items).pack(pady=10)
         ttk.Button(self.root, text=text.run, command=self.on_run).pack(pady=10)
+
     def on_run(self):
         self.main_frame.sync_selected_strategies()
         self.run()
 
     def choose_all_items(self):
-        for category in self.main_frame.categories:
-            category.checked.set(True)
-            for item in category.items:
-                item.checked.set(True)
+        self.viewmodel.select_all()
+        # 同步 UI 中的策略选择（全选不改变策略，但确保所有条目的策略下拉框显示正确）
         self.main_frame.sync_selected_strategies()
 
     def run(self):
-        selected_items = []
-        for category in self.main_frame.categories:
-            for item in category.items:
-                if item.checked.get():
-                    selected_items.append(item)
+        selected_items = self.viewmodel.get_selected_items()
         if not selected_items:
             messagebox.showwarning("No Items Selected", text.run_warning)
             return

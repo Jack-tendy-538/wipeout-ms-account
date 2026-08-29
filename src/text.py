@@ -15,6 +15,10 @@ agreement_warning = "您必须接受用户协议才能继续。"
 
 head = "请选择您要使用的项目。"
 
+menu_exit = "退出"
+menu_file = "文件(F)"
+menu_select_all = "全选"
+menu_select_category = "选择(S)"
 panel = "有未列出的内容吗？"
 panel_issue = "提交问题"
 panel_contrib = "想要参与贡献吗？"
