@@ -46,7 +46,6 @@ class UserAgreementWindow:
             messagebox.showwarning("Agreement Required", text.agreement_warning)
 
 # main.py 中的 ChooseWindow 部分（含嵌套类）
-# 需确保已导入：tkinter, ttk, sv_ttk, util, text, ChooseViewModel
 
 class ChooseWindow:
     @dataclass
@@ -153,16 +152,23 @@ class ChooseWindow:
 
     @dataclass
     class MainMenu:
-        root:tkinter.Tk
+        root: tkinter.Tk
+        viewmodel: "ChooseViewModel"
+        on_select_all: Optional[callable] = None
+        on_clear_all: Optional[callable] = None
+
         def render(self):
             self.menubar = tkinter.Menu(self.root)
             self.root.config(menu=self.menubar)
+
             self.file_menu = tkinter.Menu(self.menubar, tearoff=0)
             self.file_menu.add_command(label=text.menu_exit, command=self.root.quit)
             self.menubar.add_cascade(label=text.menu_file, menu=self.file_menu)
+
             self.select_menu = tkinter.Menu(self.menubar, tearoff=0)
-            self.select_menu.add_command(label=text.menu_select_all, command=ChooseViewModel.select_all)
-            self.select_menu.add_cascade(label=text.menu_select_category, menu=self.select_menu)
+            self.select_menu.add_command(label=text.menu_select_all, command=self.on_select_all)
+            self.select_menu.add_command(label="取消全选", command=self.on_clear_all)
+            self.menubar.add_cascade(label=text.menu_select_category, menu=self.select_menu)
     
     def __init__(self):
         self.root = tkinter.Tk()
@@ -172,6 +178,15 @@ class ChooseWindow:
 
         # 创建 ViewModel 并传递给 UI 框架
         self.viewmodel = ChooseViewModel(cats)
+
+        self.main_menu = ChooseWindow.MainMenu(
+            self.root,
+            self.viewmodel,
+            on_select_all=self.choose_all_items,
+            on_clear_all=self.clear_all_items,
+        )
+        self.main_menu.render()
+
         self.main_frame = ChooseWindow.MainFrame(
             self.root, cats, viewmodel=self.viewmodel
         )
@@ -199,6 +214,13 @@ class ChooseWindow:
     def choose_all_items(self):
         self.viewmodel.select_all()
         # 同步 UI 中的策略选择（全选不改变策略，但确保所有条目的策略下拉框显示正确）
+        self.main_frame.sync_selected_strategies()
+
+    def clear_all_items(self):
+        for category in self.viewmodel.categories:
+            category.checked.set(False)
+            for item in category.items:
+                item.checked.set(False)
         self.main_frame.sync_selected_strategies()
 
     def run(self):
