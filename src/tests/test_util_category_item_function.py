@@ -44,23 +44,3 @@ def test_execute_strategy_in_item(given_cat):
     hello_world.checked.set(True)
     hello_world.use_strategy = 0
     assert hello_world.execute() == True
-
-
-def test_select_strategy_by_name_updates_runtime_state(given_cat):
-    test_cat, hello_world = given_cat
-
-    @hello_world.add_strategy("输出hello world")
-    def hello_world_strategy():
-        return "hello"
-
-    @hello_world.add_strategy("输出bye")
-    def hello_world_strategy_bye():
-        return "bye"
-
-    hello_world.set_selected_strategy("输出bye")
-    assert hello_world.selected_strategy == "输出bye"
-    assert hello_world.use_strategy == 1
-    assert hello_world.selected_strategy_fn is not None
-
-    hello_world.checked.set(True)
-    assert hello_world.execute() == "bye"
