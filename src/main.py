@@ -238,6 +238,7 @@ class RunWindow:
         self.items = items
         self.viewmodel = RunViewModel(items)
         self.root = tkinter.Tk()
+        self.root.geometry("500x360")
         self.root.title("Run Items")
         sv_ttk.set_theme("light")
         self.render()
