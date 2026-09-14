@@ -15,6 +15,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from pathlib import Path
 from webbrowser import open as open_url
 import time
+import threading
 
 __ALL__ = ["Category", "Item", "BoolVar", "download_icon", "is_admin", "restart_as_admin", "invoke", "call_url","unlink","remove_tree","open_url"]
 
@@ -56,13 +57,20 @@ class Category:
 class Item:
     category: Category
     name: str
+    event: Optional[threading.Event] = None
     links: Dict[str, str] = field(default_factory=dict)
     icon: Optional[str] = None
     checked: BoolVar = field(default_factory=lambda: BoolVar(value=False))
     is_error: bool = False
+    error_message: Optional[str] = None
+    selected_strategy: Optional[str] = None
+    selected_strategy_fn: Optional[Callable[..., Any]] = None
     strategies: List[Tuple[str, Callable[..., Any]]] = field(default_factory=list)
-    use_strategy: int = 0
-    allowed: bool = True
+    use_strategy: Optional[int] = 0
+    allowed: Optional[bool] = True
+    _pause_requested: Optional[bool] = False
+    _kill_requested: Optional[bool] = False
+    _strategy_started: Optional[bool] = False
 
     def __post_init__(self) -> None:
         self.category.add_item(self)
