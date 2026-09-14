@@ -22,13 +22,10 @@ class ChooseViewModel:
 
     def set_item_strategy(self, item: Item, strategy_name: str) -> None:
         """为指定条目设置选中的策略名称，并更新对应的可执行函数。"""
-        item.selected_strategy = strategy_name
-        item.selected_strategy_fn = None
-        for idx, (name, fn) in enumerate(item.strategies):
-            if name == strategy_name:
-                item.selected_strategy_fn = fn
-                item.use_strategy = idx
-                break
+        if strategy_name is None:
+            item.set_selected_strategy(None)
+            return
+        item.set_selected_strategy(strategy_name)
 
     def select_all(self) -> None:
         """全选所有条目。"""

@@ -41,5 +41,6 @@ def test_execute_strategy_in_item(given_cat):
         print("hello world")
         return True
     
+    hello_world.checked.set(True)
     hello_world.use_strategy = 0
-    assert hello_world.execute() == None
+    assert hello_world.execute() == True
