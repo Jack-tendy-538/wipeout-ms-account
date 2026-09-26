@@ -9,14 +9,14 @@ dev_cat = Category("开发")
 git = Item(dev_cat, "Git")
 
 @git.add_strategy("删除配置文件")
-def git_delete_config(item):
+def git_delete_config():
     """删除Git配置文件"""
     # 直接删除配置文件即可
     config_path = r"C:\Users\{username}\.gitconfig".format(username=invoke("get_username"))
     unlink(config_path)
 
 @git.add_strategy("使用Git命令退登")
-def git_logout(item):
+def git_logout():
     """使用Git命令退登"""
     # 直接使用Git命令退登
     invoke("git credential-manager uninstall")
@@ -25,7 +25,7 @@ def git_logout(item):
 vscode = Item(dev_cat, "Visual Studio Code")
 
 @vscode.add_strategy("删除配置文件")
-def vscode_delete_config(item):
+def vscode_delete_config():
     """删除VS Code配置文件"""
     # 直接删除配置文件即可
     config_path = r"C:\Users\{username}\AppData\Roaming\Code".format(username=invoke("get_username"))
