@@ -86,9 +86,9 @@ class Item:
             def wrapped(*args: Any, **kwargs: Any) -> Any:
                 # ensure flags exist on the item
                 # if not hasattr(self, "_pause_requested"):
-                self._pause_requested = False
+                # self._pause_requested = False
                 # if not hasattr(self, "_kill_requested"):
-                self._kill_requested = False
+                # self._kill_requested = False
 
                 # If a kill was requested before start, skip immediately
                 if self._kill_requested:
