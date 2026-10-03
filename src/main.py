@@ -242,22 +242,10 @@ class RunWindow:
         self.root.title("Run Items")
         sv_ttk.set_theme("light")
         self.render()
-
-    def pause(self):
-        """Pause any strategies that have not yet started for all remaining items."""
-        self.viewmodel.pause()
-
-    def resume(self):
-        """Resume any strategies that were paused before they started."""
-        self.viewmodel.resume()
-
-    def continue_(self):
-        """Alias for resuming paused strategies."""
-        self.viewmodel.continue_()
-
-    def kill(self):
-        """Kill (skip) any strategies that have not yet started for all remaining items."""
-        self.viewmodel.kill()
+        self.pause = RunViewModel.pause
+        self.resume = RunViewModel.resume
+        self.stop = RunViewModel.stop
+        self.continue_ = RunViewModel.continue_
 
     def render(self):
         # self.root.geometry("400x260")
@@ -267,7 +255,6 @@ class RunWindow:
             candidates = [
                 base_dir / "images" / "man.jpeg",
                 base_dir / "images" / "man.png",
-                base_dir / "images" / "run.png",
             ]
             image_path = next((p for p in candidates if p.exists()), None)
             if image_path is not None:
@@ -278,13 +265,16 @@ class RunWindow:
 
         self.frame = ttk.Frame(self.root, padding=10)
         ttk.Label(self.frame, text=text.motto).pack(pady=10)
+        ttk.Button(self.frame, text=text.pause, command=self.pause).pack(side=tkinter.LEFT, padx=5)
+        ttk.Button(self.frame, text=text.resume, command=self.resume).pack(side=tkinter.LEFT, padx=5)
+        ttk.Button(self.frame, text=text.stop, command=self.stop).pack(side=tkinter.LEFT, padx=5)
 
-        self.log_text = tkinter.Text(self.frame, height=8, wrap=tkinter.WORD, state=tkinter.DISABLED)
+        self.log_text = tkinter.Text(self.frame, height=8, wrap=tkinter.WORD, state=tkinter.DISABLED, width=60)
         self.log_text.pack(fill=tkinter.BOTH, expand=True, padx=10, pady=(0,10))
 
-        self.progress = ttk.Progressbar(self.frame, mode="indeterminate")
-        self.progress.pack(fill=tkinter.X, padx=10, pady=5)
-        self.progress.start()
+        # self.progress = ttk.Progressbar(self.frame, mode="indeterminate")
+        # self.progress.pack(fill=tkinter.X, padx=10, pady=5)
+        # self.progress.start()
         self.frame.pack(fill=tkinter.BOTH, expand=True)
         self.root.after(100, self.run_items)
 
