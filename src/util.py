@@ -66,7 +66,7 @@ class Item:
     selected_strategy: Optional[str] = None
     selected_strategy_fn: Optional[Callable[..., Any]] = None
     strategies: List[Tuple[str, Callable[..., Any]]] = field(default_factory=list)
-    use_strategy: Optional[int] = 0
+    # use_strategy: Optional[int] = 0
     allowed: Optional[bool] = True
     _pause_requested: Optional[bool] = False
     _kill_requested: Optional[bool] = False
@@ -99,9 +99,11 @@ class Item:
                 # if not hasattr(self, started_attr):
                     # setattr(self, started_attr, False)
                 self._strategy_started = False
+                
+                started_before_call = self._strategy_started
 
-                # Wait while pause requested and the strategy hasn't started yet
-                while self._pause_requested and not getattr(self, started_attr):
+                # 已有外层策略在执行时，嵌套调用不应被暂停逻辑拦住。
+                while self._pause_requested and not started_before_call:
                     if self._kill_requested:
                         return None
                     time.sleep(0.1)
@@ -109,24 +111,19 @@ class Item:
                 if self._kill_requested:
                     return None
 
-                self._strategy_started = True  # Mark as started
+                self._strategy_started = True
                 try:
                     if self.allowed:
                         try:
                             return func(*args, **kwargs)
                         except Exception as e:
-                            # record error similarly to previous implementation
                             self.is_error = True
                             self.error_message = str(e)
                             self.category.errors.append((self.name, strategy_name, str(e)))
                             return None
-                    else:
-                        # If not allowed, simply return None (no-op)
-                        return None
+                    return None
                 finally:
-                    # ensure started flag cleared for subsequent runs
-                    self._strategy_started = False
-
+                    self._strategy_started = started_before_call
             # register the wrapped strategy
             self.strategies.append((strategy_name, wrapped))
             return wrapped

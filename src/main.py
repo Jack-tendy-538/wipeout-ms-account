@@ -241,11 +241,11 @@ class RunWindow:
         self.root = tkinter.Tk()
         self.root.title("Run Items")
         sv_ttk.set_theme("light")
+        self.pause = self.viewmodel.pause
+        self.resume = self.viewmodel.resume
+        self.stop = self.viewmodel.kill
+        self.continue_ = self.viewmodel.continue_
         self.render()
-        self.pause = RunViewModel.pause
-        self.resume = RunViewModel.resume
-        self.stop = RunViewModel.stop
-        self.continue_ = RunViewModel.continue_
 
     def render(self):
         # self.root.geometry("400x260")
