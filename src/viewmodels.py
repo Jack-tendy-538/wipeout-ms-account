@@ -68,6 +68,15 @@ class RunViewModel:
         for item in self.items:
             item._pause_requested = True
 
+    def resume(self) -> None:
+        """继续尚未开始执行的策略。"""
+        for item in self.items:
+            item._pause_requested = False
+
+    def continue_(self) -> None:
+        """继续执行被暂停的策略。"""
+        self.resume()
+
     def kill(self) -> None:
         """终止尚未开始执行的策略，并取消暂停。"""
         for item in self.items:
