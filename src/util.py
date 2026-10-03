@@ -48,10 +48,10 @@ class Category:
         self.items.append(item)
         return item
 
-    def execute(self):
-        for item in self.items:
-            if item.checked.get():
-                item.execute()
+    # def execute(self):
+    #     for item in self.items:
+    #         if item.checked.get():
+    #             item.execute()
 
 @dataclass
 class Item:
@@ -66,7 +66,7 @@ class Item:
     selected_strategy: Optional[str] = None
     selected_strategy_fn: Optional[Callable[..., Any]] = None
     strategies: List[Tuple[str, Callable[..., Any]]] = field(default_factory=list)
-    # use_strategy: Optional[int] = 0
+    use_strategy: Optional[int] = 0
     allowed: Optional[bool] = True
     _pause_requested: Optional[bool] = False
     _kill_requested: Optional[bool] = False
@@ -99,7 +99,7 @@ class Item:
                 # if not hasattr(self, started_attr):
                     # setattr(self, started_attr, False)
                 self._strategy_started = False
-                
+
                 started_before_call = self._strategy_started
 
                 # 已有外层策略在执行时，嵌套调用不应被暂停逻辑拦住。
