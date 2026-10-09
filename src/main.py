@@ -8,7 +8,7 @@ import sv_ttk
 
 from strategies import cats
 import util, text
-from viewmodels import ChooseViewModel
+from viewmodels import ChooseViewModel, RunViewModel
 import time
 
 if not util.is_admin():
@@ -214,10 +214,7 @@ class RunWindow:
     def __init__(self, items: List[util.Item]):
         self.log = []
         self.items = items
-        # control flags manipulated by pause/kill methods
-        for it in self.items:
-            setattr(it, "_pause_requested", False)
-            setattr(it, "_kill_requested", False)
+        self.viewmodel = RunViewModel(items)
         self.root = tkinter.Tk()
         self.root.title("Run Items")
         sv_ttk.set_theme("light")
@@ -225,16 +222,11 @@ class RunWindow:
 
     def pause(self):
         """Pause any strategies that have not yet started for all remaining items."""
-        for it in self.items:
-            # only affect strategies that haven't started
-            it._pause_requested = True
+        self.viewmodel.pause()
 
     def kill(self):
         """Kill (skip) any strategies that have not yet started for all remaining items."""
-        for it in self.items:
-            it._kill_requested = True
-            # un-pause so wrappers can detect kill and exit promptly
-            it._pause_requested = False
+        self.viewmodel.kill()
 
     def render(self):
         self.root.geometry("400x260")
@@ -262,7 +254,7 @@ class RunWindow:
     def run_items(self):
         for item in self.items:
             self.append_log(f"正在进行:{item.name}使用的策略:{item.selected_strategy}")
-            item.execute()
+            self.viewmodel.run_item(item)
             if item.is_error:
                 self.append_log(f"{item.name}失败。错误信息: {item.error_message}")
             else:
