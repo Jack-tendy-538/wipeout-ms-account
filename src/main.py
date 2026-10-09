@@ -1,6 +1,7 @@
 # main.py
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
+from pathlib import Path
 import tkinter
 import tkinter.ttk as ttk
 import tkinter.messagebox as messagebox
@@ -240,28 +241,40 @@ class RunWindow:
         self.root = tkinter.Tk()
         self.root.title("Run Items")
         sv_ttk.set_theme("light")
+        self.pause = self.viewmodel.pause
+        self.resume = self.viewmodel.resume
+        self.stop = self.viewmodel.kill
+        self.continue_ = self.viewmodel.continue_
         self.render()
 
-    def pause(self):
-        """Pause any strategies that have not yet started for all remaining items."""
-        self.viewmodel.pause()
-
-    def kill(self):
-        """Kill (skip) any strategies that have not yet started for all remaining items."""
-        self.viewmodel.kill()
-
     def render(self):
-        self.root.geometry("400x260")
-        
+        # self.root.geometry("400x260")
+        # 添加图片
+        try:
+            base_dir = Path(__file__).resolve().parent
+            candidates = [
+                base_dir / "images" / "man.jpeg",
+                base_dir / "images" / "man.png",
+            ]
+            image_path = next((p for p in candidates if p.exists()), None)
+            if image_path is not None:
+                self.logo_image = tkinter.PhotoImage(file=str(image_path))
+                ttk.Label(self.root, image=self.logo_image).pack(pady=10)
+        except Exception:
+            pass
+
         self.frame = ttk.Frame(self.root, padding=10)
         ttk.Label(self.frame, text=text.motto).pack(pady=10)
+        ttk.Button(self.frame, text=text.pause, command=self.pause).pack(side=tkinter.LEFT, padx=5)
+        ttk.Button(self.frame, text=text.resume, command=self.resume).pack(side=tkinter.LEFT, padx=5)
+        ttk.Button(self.frame, text=text.stop, command=self.stop).pack(side=tkinter.LEFT, padx=5)
 
-        self.log_text = tkinter.Text(self.frame, height=8, wrap=tkinter.WORD, state=tkinter.DISABLED)
+        self.log_text = tkinter.Text(self.frame, height=8, wrap=tkinter.WORD, state=tkinter.DISABLED, width=60)
         self.log_text.pack(fill=tkinter.BOTH, expand=True, padx=10, pady=(0,10))
 
-        self.progress = ttk.Progressbar(self.frame, mode="indeterminate")
-        self.progress.pack(fill=tkinter.X, padx=10, pady=5)
-        self.progress.start()
+        # self.progress = ttk.Progressbar(self.frame, mode="indeterminate")
+        # self.progress.pack(fill=tkinter.X, padx=10, pady=5)
+        # self.progress.start()
         self.frame.pack(fill=tkinter.BOTH, expand=True)
         self.root.after(100, self.run_items)
 

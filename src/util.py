@@ -48,10 +48,10 @@ class Category:
         self.items.append(item)
         return item
 
-    def execute(self):
-        for item in self.items:
-            if item.checked.get():
-                item.execute()
+    # def execute(self):
+    #     for item in self.items:
+    #         if item.checked.get():
+    #             item.execute()
 
 @dataclass
 class Item:
@@ -86,9 +86,9 @@ class Item:
             def wrapped(*args: Any, **kwargs: Any) -> Any:
                 # ensure flags exist on the item
                 # if not hasattr(self, "_pause_requested"):
-                self._pause_requested = False
+                # self._pause_requested = False
                 # if not hasattr(self, "_kill_requested"):
-                self._kill_requested = False
+                # self._kill_requested = False
 
                 # If a kill was requested before start, skip immediately
                 if self._kill_requested:
@@ -100,8 +100,10 @@ class Item:
                     # setattr(self, started_attr, False)
                 self._strategy_started = False
 
-                # Wait while pause requested and the strategy hasn't started yet
-                while self._pause_requested and not getattr(self, started_attr):
+                started_before_call = self._strategy_started
+
+                # 已有外层策略在执行时，嵌套调用不应被暂停逻辑拦住。
+                while self._pause_requested and not started_before_call:
                     if self._kill_requested:
                         return None
                     time.sleep(0.1)
@@ -109,24 +111,19 @@ class Item:
                 if self._kill_requested:
                     return None
 
-                self._strategy_started = True  # Mark as started
+                self._strategy_started = True
                 try:
                     if self.allowed:
                         try:
                             return func(*args, **kwargs)
                         except Exception as e:
-                            # record error similarly to previous implementation
                             self.is_error = True
                             self.error_message = str(e)
                             self.category.errors.append((self.name, strategy_name, str(e)))
                             return None
-                    else:
-                        # If not allowed, simply return None (no-op)
-                        return None
+                    return None
                 finally:
-                    # ensure started flag cleared for subsequent runs
-                    self._strategy_started = False
-
+                    self._strategy_started = started_before_call
             # register the wrapped strategy
             self.strategies.append((strategy_name, wrapped))
             return wrapped

@@ -1,5 +1,6 @@
 from util import Category,Item
 from util import dispatch,invoke,unlink
+from viewmodels import RunViewModel
 import pytest
 
 @pytest.fixture
