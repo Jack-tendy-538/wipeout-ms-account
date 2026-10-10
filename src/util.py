@@ -106,6 +106,7 @@ class Item:
                         return None
                     time.sleep(0.1)
 
+                # if self._kill_requested:
                 if self._kill_requested:
                     return None
 
