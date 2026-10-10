@@ -55,10 +55,15 @@ class ChooseWindow:
         root: ttk.Frame
         viewmodel: "ChooseViewModel"          # 传入 ViewModel
         category: Optional["util.Category"] = None
+        category_var: Optional[tkinter.BooleanVar] = None
+        checked_var: tkinter.BooleanVar = field(init=False)
 
         def on_item_toggle(self):
+            self.obj.checked.set(self.checked_var.get())
             # 调用 ViewModel 同步类别全选状态
             self.viewmodel.toggle_item(self.obj)
+            if self.category_var is not None and self.category is not None:
+                self.category_var.set(self.category.checked.get())
 
         def on_strategy_selected(self, event: tkinter.Event):
             selected = self.strategy_var.get()
@@ -73,8 +78,9 @@ class ChooseWindow:
             self.frame.pack(fill=tkinter.X, padx=10, pady=5)
             self.strategies = [s[0] for s in self.obj.strategies]
             btn_state = "normal" if getattr(self.obj, "allowed", True) else "disabled"
+            self.checked_var = tkinter.BooleanVar(master=self.root, value=self.obj.checked.get())
             ttk.Checkbutton(
-                self.frame, text="", variable=self.obj.checked,
+                self.frame, text="", variable=self.checked_var,
                 command=self.on_item_toggle, state=btn_state
             ).pack(side=tkinter.LEFT)
             if self.obj.icon:
@@ -106,21 +112,31 @@ class ChooseWindow:
         viewmodel: "ChooseViewModel"          # 传入 ViewModel
         item_frames: List["ChooseWindow.ItemFrame"] = field(default_factory=list)
 
+        checked_var: tkinter.BooleanVar = field(init=False)
+
         def on_category_toggle(self):
+            self.obj.checked.set(self.checked_var.get())
             self.viewmodel.toggle_category(self.obj)
+            self.sync_checkbox_values()
+
+        def sync_checkbox_values(self):
+            self.checked_var.set(self.obj.checked.get())
+            for item_frame in self.item_frames:
+                item_frame.checked_var.set(item_frame.obj.checked.get())
 
         def render(self):
             self.item_frames = []
             self.frame = ttk.LabelFrame(self.root, text=self.obj.name, padding=10)
             self.frame.pack(fill=tkinter.X, padx=10, pady=5)
+            self.checked_var = tkinter.BooleanVar(master=self.root, value=self.obj.checked.get())
             ttk.Checkbutton(
-                self.frame, text="", variable=self.obj.checked,
+                self.frame, text="", variable=self.checked_var,
                 command=self.on_category_toggle
             ).pack(side=tkinter.LEFT)
             ttk.Label(self.frame, text=self.obj.name).pack(side=tkinter.LEFT, padx=5)
             for item in self.obj.items:
-                item_frame = ChooseWindow.ItemFrame(
-                    item, self.frame, viewmodel=self.viewmodel, category=self.obj
+                item_frame = ChooseWindow.ItemFrame(item, self.frame, viewmodel=self.viewmodel,
+                    category=self.obj, category_var=self.checked_var
                 )
                 item_frame.render()
                 self.item_frames.append(item_frame)
@@ -146,6 +162,10 @@ class ChooseWindow:
                 )
                 category_frame.render()
                 self.category_frames.append(category_frame)
+
+        def sync_checkbox_values(self):
+            for category_frame in self.category_frames:
+                category_frame.sync_checkbox_values()
 
         def sync_selected_strategies(self):
             for category_frame in self.category_frames:
@@ -215,6 +235,7 @@ class ChooseWindow:
     def choose_all_items(self):
         self.viewmodel.select_all()
         # 同步 UI 中的策略选择（全选不改变策略，但确保所有条目的策略下拉框显示正确）
+        self.main_frame.sync_checkbox_values()
         self.main_frame.sync_selected_strategies()
 
     def clear_all_items(self):
@@ -222,6 +243,7 @@ class ChooseWindow:
             category.checked.set(False)
             for item in category.items:
                 item.checked.set(False)
+        self.main_frame.sync_checkbox_values()
         self.main_frame.sync_selected_strategies()
 
     def run(self):
