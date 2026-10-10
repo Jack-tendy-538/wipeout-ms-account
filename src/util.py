@@ -48,10 +48,10 @@ class Category:
         self.items.append(item)
         return item
 
-    def execute(self):
-        for item in self.items:
-            if item.checked.get():
-                item.execute()
+    # def execute(self):
+    #     for item in self.items:
+    #         if item.checked.get():
+    #             item.execute()
 
 @dataclass
 class Item:
@@ -116,14 +116,11 @@ class Item:
                         try:
                             return func(*args, **kwargs)
                         except Exception as e:
-                            # record error similarly to previous implementation
                             self.is_error = True
                             self.error_message = str(e)
                             self.category.errors.append((self.name, strategy_name, str(e)))
                             return None
-                    else:
-                        # If not allowed, simply return None (no-op)
-                        return None
+                    return None
                 finally:
                     # ensure started flag cleared for subsequent runs
                     self._strategy_started = False
