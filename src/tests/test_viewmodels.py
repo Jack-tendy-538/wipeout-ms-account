@@ -2,13 +2,13 @@ import pytest
 
 from util import Category, Item
 from viewmodels import ChooseViewModel
-
+import tkinter as tk
 
 def test_set_item_strategy_updates_strategy_and_index():
     item = Item(category=Category("test"), name="test item")
     strategies = [lambda: "first", lambda: "second"]
     item.strategies = [("first", strategies[0]), ("second", strategies[1])]
-    viewmodel = ChooseViewModel([item.category])
+    viewmodel = ChooseViewModel([item.category], root=tk.Tk())
 
     viewmodel.set_item_strategy(item, "second")
 
@@ -24,7 +24,7 @@ def test_set_item_strategy_rejects_unknown_name_without_changing_state():
     item.selected_strategy = "first"
     item.selected_strategy_fn = strategy
     item.use_strategy = 0
-    viewmodel = ChooseViewModel([item.category])
+    viewmodel = ChooseViewModel([item.category], root=tk.Tk())
 
     with pytest.raises(ValueError, match="Unknown strategy 'missing'"):
         viewmodel.set_item_strategy(item, "missing")
