@@ -198,7 +198,7 @@ class ChooseWindow:
         ttk.Label(self.root, text=text.head).pack(pady=10)
 
         # 创建 ViewModel 并传递给 UI 框架
-        self.viewmodel = ChooseViewModel(cats)
+        self.viewmodel = ChooseViewModel(cats, self.root)
 
         self.main_menu = ChooseWindow.MainMenu(
             self.root,
