@@ -86,8 +86,18 @@ class ChooseWindow:
                 command=self.on_item_toggle, state=btn_state
             ).pack(side=tkinter.LEFT, padx=(0, 8))
             if self.obj.icon:
-                self.icon_image = tkinter.PhotoImage(file=self.obj.icon)
-                ttk.Label(self.frame, image=self.icon_image).pack(side=tkinter.LEFT, padx=6)
+                icon_path = Path(self.obj.icon)
+                if not icon_path.is_absolute():
+                    icon_path = Path(__file__).resolve().parent / "images" / icon_path
+                try:
+                    if icon_path.is_file():
+                        self.icon_image = tkinter.PhotoImage(file=str(icon_path))
+                        ttk.Label(self.frame, image=self.icon_image).pack(
+                            side=tkinter.LEFT, padx=6
+                        )
+                except (OSError, tkinter.TclError):
+                    # 图标缺失或无法读取时，不显示图标，但继续打开选择窗口。
+                    pass
             ttk.Label(self.frame, text=self.obj.name, font=(None, 11)).pack(side=tkinter.LEFT, padx=6)
 
             self.strategy_var = tkinter.StringVar(value=self.strategies[0] if self.strategies else "")
