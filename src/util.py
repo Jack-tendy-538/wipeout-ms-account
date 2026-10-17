@@ -84,26 +84,21 @@ class Item:
     def add_strategy(self, strategy_name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
             def wrapped(*args: Any, **kwargs: Any) -> Any:
-                # ensure flags exist on the item
-                # if not hasattr(self, "_pause_requested"):
-                # self._pause_requested = False
-                # if not hasattr(self, "_kill_requested"):
-                # self._kill_requested = False
+                # Preserve the item-level pause/kill state set by the caller.
+                # They are coordination flags, not local execution state.
+                if not hasattr(self, "_pause_requested"):
+                    self._pause_requested = False
+                if not hasattr(self, "_kill_requested"):
+                    self._kill_requested = False
+                if not hasattr(self, "_strategy_started"):
+                    self._strategy_started = False
 
-                # If a kill was requested before start, skip immediately
+                # If a kill was requested before start, skip immediately.
                 if self._kill_requested:
                     return None
 
-                # started flag prevents later pause from affecting already-started strategy
-                started_attr = "_strategy_started"
-                # if not hasattr(self, started_attr):
-                    # setattr(self, started_attr, False)
-                self._strategy_started = False
-
-                started_before_call = self._strategy_started
-
-                # 已有外层策略在执行时，嵌套调用不应被暂停逻辑拦住。
-                while self._pause_requested and not started_before_call:
+                # Wait while pause is requested and the strategy has not started yet.
+                while self._pause_requested and not self._strategy_started:
                     if self._kill_requested:
                         return None
                     time.sleep(0.1)
@@ -123,7 +118,8 @@ class Item:
                             return None
                     return None
                 finally:
-                    self._strategy_started = started_before_call
+                    self._strategy_started = False
+
             # register the wrapped strategy
             self.strategies.append((strategy_name, wrapped))
             return wrapped

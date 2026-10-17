@@ -21,22 +21,24 @@ class UserAgreementWindow:
     def __init__(self):
         self.root = tkinter.Tk()
         self.root.title("User Agreement")
+        self.root.geometry("900x650")
+        self.root.minsize(820, 560)
         sv_ttk.set_theme("light")
         self.render()
 
     def render(self):
         agreement_text = text.agreement_text
-        self.frame = ttk.Frame(self.root, padding=20)
+        self.frame = ttk.Frame(self.root, padding=26)
         self.frame.pack(fill=tkinter.BOTH, expand=True)
-        self.text_widget = tkinter.Text(self.frame, wrap=tkinter.WORD, height=15, width=60)
+        self.text_widget = tkinter.Text(self.frame, wrap=tkinter.WORD, height=20, width=80)
         self.text_widget.insert(tkinter.END, agreement_text)
         self.text_widget.pack(padx=20, pady=20)
 
         self.agreed_var = tkinter.BooleanVar(value=False)
         self.agreed_checkbox = ttk.Checkbutton(self.root, text=text.agree_check, variable=self.agreed_var)
-        self.agreed_checkbox.pack(pady=10)
-        self.ok_button = ttk.Button(self.root, text="OK", command=self.on_ok)
-        self.ok_button.pack(pady=10)
+        self.agreed_checkbox.pack(pady=12)
+        self.ok_button = ttk.Button(self.root, text="OK", command=self.on_ok, width=14)
+        self.ok_button.pack(pady=12)
 
     def on_ok(self):
         if self.agreed_var.get():
@@ -74,19 +76,19 @@ class ChooseWindow:
             self.viewmodel.set_item_strategy(self.obj, self.strategy_var.get())
 
         def render(self):
-            self.frame = ttk.Frame(self.root, padding=5)
-            self.frame.pack(fill=tkinter.X, padx=10, pady=5)
+            self.frame = ttk.Frame(self.root, padding=10)
+            self.frame.pack(fill=tkinter.X, padx=14, pady=8)
             self.strategies = [s[0] for s in self.obj.strategies]
             btn_state = "normal" if getattr(self.obj, "allowed", True) else "disabled"
             self.checked_var = tkinter.BooleanVar(master=self.root, value=self.obj.checked.get())
             ttk.Checkbutton(
                 self.frame, text="", variable=self.checked_var,
                 command=self.on_item_toggle, state=btn_state
-            ).pack(side=tkinter.LEFT)
+            ).pack(side=tkinter.LEFT, padx=(0, 8))
             if self.obj.icon:
                 self.icon_image = tkinter.PhotoImage(file=self.obj.icon)
-                ttk.Label(self.frame, image=self.icon_image).pack(side=tkinter.LEFT, padx=5)
-            ttk.Label(self.frame, text=self.obj.name).pack(side=tkinter.LEFT, padx=5)
+                ttk.Label(self.frame, image=self.icon_image).pack(side=tkinter.LEFT, padx=6)
+            ttk.Label(self.frame, text=self.obj.name, font=(None, 11)).pack(side=tkinter.LEFT, padx=6)
 
             self.strategy_var = tkinter.StringVar(value=self.strategies[0] if self.strategies else "")
             if self.strategies:
@@ -126,14 +128,14 @@ class ChooseWindow:
 
         def render(self):
             self.item_frames = []
-            self.frame = ttk.LabelFrame(self.root, text=self.obj.name, padding=10)
-            self.frame.pack(fill=tkinter.X, padx=10, pady=5)
+            self.frame = ttk.LabelFrame(self.root, text=self.obj.name, padding=16)
+            self.frame.pack(fill=tkinter.X, padx=14, pady=10)
             self.checked_var = tkinter.BooleanVar(master=self.root, value=self.obj.checked.get())
             ttk.Checkbutton(
                 self.frame, text="", variable=self.checked_var,
                 command=self.on_category_toggle
-            ).pack(side=tkinter.LEFT)
-            ttk.Label(self.frame, text=self.obj.name).pack(side=tkinter.LEFT, padx=5)
+            ).pack(side=tkinter.LEFT, padx=(0, 8))
+            ttk.Label(self.frame, text=self.obj.name, font=(None, 11)).pack(side=tkinter.LEFT, padx=6)
             for item in self.obj.items:
                 item_frame = ChooseWindow.ItemFrame(item, self.frame, viewmodel=self.viewmodel,
                     category=self.obj, category_var=self.checked_var
@@ -154,7 +156,7 @@ class ChooseWindow:
 
         def render(self):
             self.category_frames = []
-            self.frame = ttk.Frame(self.root, padding=10)
+            self.frame = ttk.Frame(self.root, padding=16)
             self.frame.pack(fill=tkinter.BOTH, expand=True)
             for category in self.categories:
                 category_frame = ChooseWindow.CategoryFrame(
@@ -194,11 +196,13 @@ class ChooseWindow:
     def __init__(self):
         self.root = tkinter.Tk()
         self.root.title("选择窗口")
+        self.root.geometry("1100x760")
+        self.root.minsize(980, 680)
         sv_ttk.set_theme("light")
-        ttk.Label(self.root, text=text.head).pack(pady=10)
+        ttk.Label(self.root, text=text.head, font=(None, 12)).pack(pady=14)
 
         # 创建 ViewModel 并传递给 UI 框架
-        self.viewmodel = ChooseViewModel(cats)
+        self.viewmodel = ChooseViewModel(cats, self.root)
 
         self.main_menu = ChooseWindow.MainMenu(
             self.root,
@@ -225,8 +229,8 @@ class ChooseWindow:
             command=lambda: util.open_link("https://github.com/Jack-tendy-538/wipeout-ms-account/fork")
         ).pack(anchor=tkinter.W, pady=5)
 
-        ttk.Button(self.root, text="全选策略", command=self.choose_all_items).pack(pady=10)
-        ttk.Button(self.root, text=text.run, command=self.on_run).pack(pady=10)
+        ttk.Button(self.root, text="全选策略", command=self.choose_all_items, width=16).pack(pady=12)
+        ttk.Button(self.root, text=text.run, command=self.on_run, width=16).pack(pady=12)
 
     def on_run(self):
         self.main_frame.sync_selected_strategies()
@@ -246,6 +250,13 @@ class ChooseWindow:
         self.main_frame.sync_checkbox_values()
         self.main_frame.sync_selected_strategies()
 
+    def clear_all_items(self):
+        for category in self.viewmodel.categories:
+            category.checked.set(False)
+            for item in category.items:
+                item.checked.set(False)
+        self.main_frame.sync_selected_strategies()
+
     def run(self):
         selected_items = self.viewmodel.get_selected_items()
         if not selected_items:
@@ -262,12 +273,22 @@ class RunWindow:
         self.viewmodel = RunViewModel(items)
         self.root = tkinter.Tk()
         self.root.title("Run Items")
+        self.root.geometry("900x620")
+        self.root.minsize(820, 540)
         sv_ttk.set_theme("light")
         self.pause = self.viewmodel.pause
         self.resume = self.viewmodel.resume
         self.stop = self.viewmodel.kill
         self.continue_ = self.viewmodel.continue_
         self.render()
+
+    def pause(self):
+        """Pause any strategies that have not yet started for all remaining items."""
+        self.viewmodel.pause()
+
+    def kill(self):
+        """Kill (skip) any strategies that have not yet started for all remaining items."""
+        self.viewmodel.kill()
 
     def render(self):
         # self.root.geometry("400x260")
@@ -285,14 +306,14 @@ class RunWindow:
         except Exception:
             pass
 
-        self.frame = ttk.Frame(self.root, padding=10)
-        ttk.Label(self.frame, text=text.motto).pack(pady=10)
-        ttk.Button(self.frame, text=text.pause, command=self.pause).pack(side=tkinter.LEFT, padx=5)
-        ttk.Button(self.frame, text=text.resume, command=self.resume).pack(side=tkinter.LEFT, padx=5)
-        ttk.Button(self.frame, text=text.stop, command=self.stop).pack(side=tkinter.LEFT, padx=5)
+        self.frame = ttk.Frame(self.root, padding=18)
+        ttk.Label(self.frame, text=text.motto, font=(None, 11)).pack(pady=12)
+        ttk.Button(self.frame, text=text.pause, command=self.pause, width=12).pack(side=tkinter.LEFT, padx=6)
+        ttk.Button(self.frame, text=text.resume, command=self.resume, width=12).pack(side=tkinter.LEFT, padx=6)
+        ttk.Button(self.frame, text=text.stop, command=self.stop, width=12).pack(side=tkinter.LEFT, padx=6)
 
-        self.log_text = tkinter.Text(self.frame, height=8, wrap=tkinter.WORD, state=tkinter.DISABLED, width=60)
-        self.log_text.pack(fill=tkinter.BOTH, expand=True, padx=10, pady=(0,10))
+        self.log_text = tkinter.Text(self.frame, height=10, wrap=tkinter.WORD, state=tkinter.DISABLED, width=72)
+        self.log_text.pack(fill=tkinter.BOTH, expand=True, padx=10, pady=(12, 10))
 
         # self.progress = ttk.Progressbar(self.frame, mode="indeterminate")
         # self.progress.pack(fill=tkinter.X, padx=10, pady=5)

@@ -1,12 +1,13 @@
 # viewmodels.py
 from typing import List
 from util import Category, Item
-
+import tkinter as tk
 
 class ChooseViewModel:
     """管理类别和条目的选择状态、策略选择，以及相关同步逻辑。"""
-    def __init__(self, categories: List[Category]):
+    def __init__(self, categories: List[Category],root:tk.Tk):
         self.categories = categories
+        self.root = root
 
     def toggle_item(self, item: Item) -> None:
         """当某个条目复选框变化时，同步其所属类别的全选状态。"""
@@ -68,15 +69,6 @@ class RunViewModel:
         """暂停尚未开始执行的策略。"""
         for item in self.items:
             item._pause_requested = True
-
-    def resume(self) -> None:
-        """继续尚未开始执行的策略。"""
-        for item in self.items:
-            item._pause_requested = False
-
-    def continue_(self) -> None:
-        """继续执行被暂停的策略。"""
-        self.resume()
 
     def kill(self) -> None:
         """终止尚未开始执行的策略，并取消暂停。"""
