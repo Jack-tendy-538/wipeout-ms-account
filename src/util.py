@@ -71,6 +71,12 @@ class Item:
     _pause_requested: Optional[bool] = False
     _kill_requested: Optional[bool] = False
     _strategy_started: Optional[bool] = False
+    _state_lock: Any = field(  
+        default_factory=threading.Lock,  
+        init=False,  
+        repr=False,  
+        compare=False,  
+    )  
 
     def __post_init__(self) -> None:
         self.category.add_item(self)
@@ -93,20 +99,23 @@ class Item:
                 if not hasattr(self, "_strategy_started"):
                     self._strategy_started = False
 
-                # If a kill was requested before start, skip immediately.
-                if self._kill_requested:
-                    return None
+                previous_started = self._strategy_started
 
-                # Wait while pause is requested and the strategy has not started yet.
-                while self._pause_requested and not self._strategy_started:
-                    if self._kill_requested:
-                        return None
+                # 检查请求并标记策略开始必须与 pause/kill 使用同一把锁。
+                while True:
+                    with self._state_lock:
+                        if self._kill_requested:
+                            return None
+
+                        # 已有外层策略执行时，允许嵌套策略继续执行。
+                        if not self._pause_requested or self._strategy_started:
+                            previous_started = self._strategy_started
+                            self._strategy_started = True
+                            break
+
+                    # 等待时不持锁，避免阻塞 pause/kill。
                     time.sleep(0.1)
 
-                if self._kill_requested:
-                    return None
-
-                self._strategy_started = True
                 try:
                     if self.allowed:
                         try:
@@ -118,7 +127,8 @@ class Item:
                             return None
                     return None
                 finally:
-                    self._strategy_started = False
+                    with self._state_lock:
+                        self._strategy_started = previous_started
 
             # register the wrapped strategy
             self.strategies.append((strategy_name, wrapped))

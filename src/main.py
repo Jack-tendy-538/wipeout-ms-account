@@ -2,6 +2,7 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 from pathlib import Path
+import threading
 import tkinter
 import tkinter.ttk as ttk
 import tkinter.messagebox as messagebox
@@ -260,13 +261,6 @@ class ChooseWindow:
         self.main_frame.sync_checkbox_values()
         self.main_frame.sync_selected_strategies()
 
-    def clear_all_items(self):
-        for category in self.viewmodel.categories:
-            category.checked.set(False)
-            for item in category.items:
-                item.checked.set(False)
-        self.main_frame.sync_selected_strategies()
-
     def run(self):
         selected_items = self.viewmodel.get_selected_items()
         if not selected_items:
@@ -329,27 +323,48 @@ class RunWindow:
         # self.progress.pack(fill=tkinter.X, padx=10, pady=5)
         # self.progress.start()
         self.frame.pack(fill=tkinter.BOTH, expand=True)
-        self.root.after(100, self.run_items)
+        self._run_thread = None
+        self.root.after(100, self.start_run_thread)
+
+    def start_run_thread(self):
+        if self._run_thread is not None and self._run_thread.is_alive():
+            return
+        self._run_thread = threading.Thread(target=self.run_items, daemon=True)
+        self._run_thread.start()
 
     def append_log(self, message: str):
         self.log.append(message)
+        self.root.after(0, self._append_log_ui, message)
+
+    def _append_log_ui(self, message: str):
+        if not self.log_text.winfo_exists():
+            return
         self.log_text.config(state=tkinter.NORMAL)
         self.log_text.insert(tkinter.END, message + "\n")
         self.log_text.see(tkinter.END)
         self.log_text.config(state=tkinter.DISABLED)
-        self.root.update_idletasks()
 
     def run_items(self):
-        for item in self.items:
-            self.append_log(f"正在进行:{item.name}使用的策略:{item.selected_strategy}")
-            self.viewmodel.run_item(item)
-            if item.is_error:
-                self.append_log(f"{item.name}失败。错误信息: {item.error_message}")
-            else:
-                self.append_log(f"{item.name}完成。")
-        self.progress.stop()
-        messagebox.showinfo("Run Complete", text.finish)
-        self.root.destroy()
+        try:
+            for item in self.items:
+                self.append_log(f"正在进行:{item.name}使用的策略:{item.selected_strategy}")
+                self.viewmodel.run_item(item)
+                if item.is_error:
+                    self.append_log(f"{item.name}失败。错误信息: {item.error_message}")
+                else:
+                    self.append_log(f"{item.name}完成。")
+        except Exception as exc:
+            self.append_log(f"运行异常: {exc}")
+        finally:
+            self.root.after(0, self._finish_run)
+
+    def _finish_run(self):
+        if self._run_thread is not None and self._run_thread.is_alive():
+            return
+        try:
+            self.root.after_idle(lambda: messagebox.showinfo("Run Complete", text.finish))
+        finally:
+            self.root.destroy()
 
 def main():
     agreement_window = UserAgreementWindow()

@@ -57,33 +57,36 @@ class RunViewModel:
         self.reset_state()
 
     def reset_state(self) -> None:
-        """重置每个 item 的运行时状态标志。"""
         for item in self.items:
-            setattr(item, "_pause_requested", False)
-            setattr(item, "_kill_requested", False)
-            setattr(item, "_strategy_started", False)
-            setattr(item, "is_error", False)
-            setattr(item, "error_message", "")
+            with item._state_lock:
+                item._pause_requested = False
+                item._kill_requested = False
+                item._strategy_started = False
+            item.is_error = False
+            item.error_message = ""
 
     def pause(self) -> None:
-        """暂停尚未开始执行的策略。"""
         for item in self.items:
-            item._pause_requested = True
+            with item._state_lock:
+                item._pause_requested = True
 
     def resume(self) -> None:
         """继续执行被暂停的策略。"""
         for item in self.items:
-            item._pause_requested = False
+            with item._state_lock:
+                item._pause_requested = False
 
     def continue_(self) -> None:
         """继续执行被暂停的策略。"""
         self.resume()
 
+
+
     def kill(self) -> None:
-        """终止尚未开始执行的策略，并取消暂停。"""
         for item in self.items:
-            item._kill_requested = True
-            item._pause_requested = False
+            with item._state_lock:
+                item._kill_requested = True
+                item._pause_requested = False
 
     def run_item(self, item: Item):
         """执行单个 item，并同步其执行结果。"""
