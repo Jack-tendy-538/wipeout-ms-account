@@ -71,6 +71,12 @@ class Item:
     _pause_requested: Optional[bool] = False
     _kill_requested: Optional[bool] = False
     _strategy_started: Optional[bool] = False
+    _state_lock: Any = field(  
+        default_factory=threading.Lock,  
+        init=False,  
+        repr=False,  
+        compare=False,  
+    )  
 
     def __post_init__(self) -> None:
         self.category.add_item(self)
@@ -84,34 +90,32 @@ class Item:
     def add_strategy(self, strategy_name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
             def wrapped(*args: Any, **kwargs: Any) -> Any:
-                # ensure flags exist on the item
-                # if not hasattr(self, "_pause_requested"):
-                # self._pause_requested = False
-                # if not hasattr(self, "_kill_requested"):
-                # self._kill_requested = False
+                # Preserve the item-level pause/kill state set by the caller.
+                # They are coordination flags, not local execution state.
+                if not hasattr(self, "_pause_requested"):
+                    self._pause_requested = False
+                if not hasattr(self, "_kill_requested"):
+                    self._kill_requested = False
+                if not hasattr(self, "_strategy_started"):
+                    self._strategy_started = False
 
-                # If a kill was requested before start, skip immediately
-                if self._kill_requested:
-                    return None
+                previous_started = self._strategy_started
 
-                # started flag prevents later pause from affecting already-started strategy
-                started_attr = "_strategy_started"
-                # if not hasattr(self, started_attr):
-                    # setattr(self, started_attr, False)
-                self._strategy_started = False
+                # 检查请求并标记策略开始必须与 pause/kill 使用同一把锁。
+                while True:
+                    with self._state_lock:
+                        if self._kill_requested:
+                            return None
 
-                started_before_call = self._strategy_started
+                        # 已有外层策略执行时，允许嵌套策略继续执行。
+                        if not self._pause_requested or self._strategy_started:
+                            previous_started = self._strategy_started
+                            self._strategy_started = True
+                            break
 
-                # 已有外层策略在执行时，嵌套调用不应被暂停逻辑拦住。
-                while self._pause_requested and not started_before_call:
-                    if self._kill_requested:
-                        return None
+                    # 等待时不持锁，避免阻塞 pause/kill。
                     time.sleep(0.1)
 
-                if self._kill_requested:
-                    return None
-
-                self._strategy_started = True
                 try:
                     if self.allowed:
                         try:
@@ -123,7 +127,9 @@ class Item:
                             return None
                     return None
                 finally:
-                    self._strategy_started = started_before_call
+                    with self._state_lock:
+                        self._strategy_started = previous_started
+
             # register the wrapped strategy
             self.strategies.append((strategy_name, wrapped))
             return wrapped
