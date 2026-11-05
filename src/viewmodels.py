@@ -1,13 +1,12 @@
 # viewmodels.py
 from typing import List
 from util import Category, Item
-import tkinter as tk
+# import tkinter as tk
 
 class ChooseViewModel:
     """管理类别和条目的选择状态、策略选择，以及相关同步逻辑。"""
-    def __init__(self, categories: List[Category],root:tk.Tk):
+    def __init__(self, categories: List[Category],*args):
         self.categories = categories
-        self.root = root
 
     def toggle_item(self, item: Item) -> None:
         """当某个条目复选框变化时，同步其所属类别的全选状态。"""
