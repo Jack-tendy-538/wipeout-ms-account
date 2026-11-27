@@ -4,7 +4,6 @@ charset-normalizer==3.4.7
 idna==3.18
 packaging==26.2
 pefile==2024.8.26
-pillow==12.2.0
 pyinstaller==6.21.0
 pyinstaller-hooks-contrib==2026.6
 pywin32

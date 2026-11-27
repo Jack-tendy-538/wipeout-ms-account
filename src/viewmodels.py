@@ -1,11 +1,11 @@
 # viewmodels.py
 from typing import List
 from util import Category, Item
-
+# import tkinter as tk
 
 class ChooseViewModel:
     """管理类别和条目的选择状态、策略选择，以及相关同步逻辑。"""
-    def __init__(self, categories: List[Category]):
+    def __init__(self, categories: List[Category],*args):
         self.categories = categories
 
     def toggle_item(self, item: Item) -> None:
@@ -13,6 +13,16 @@ class ChooseViewModel:
         category = item.category
         all_checked = all(it.checked.get() for it in category.items)
         category.checked.set(all_checked)
+
+    def set_item_checked(self, item: Item, value: bool) -> None:
+        """UI 写入条目的唯一入口：先改条目，再同步类别。"""
+        item.checked.set(bool(value))
+        self.toggle_item(item)
+
+    def set_category_checked(self, category: Category, value: bool) -> None:
+        """UI 写入类别的唯一入口：先改类别，再下发条目。"""
+        category.checked.set(bool(value))
+        self.toggle_category(category)
 
     def toggle_category(self, category: Category) -> None:
         """当类别复选框变化时，同步其下所有条目的选中状态。"""
@@ -56,33 +66,36 @@ class RunViewModel:
         self.reset_state()
 
     def reset_state(self) -> None:
-        """重置每个 item 的运行时状态标志。"""
         for item in self.items:
-            setattr(item, "_pause_requested", False)
-            setattr(item, "_kill_requested", False)
-            setattr(item, "_strategy_started", False)
-            setattr(item, "is_error", False)
-            setattr(item, "error_message", "")
+            with item._state_lock:
+                item._pause_requested = False
+                item._kill_requested = False
+                item._strategy_started = False
+            item.is_error = False
+            item.error_message = ""
 
     def pause(self) -> None:
-        """暂停尚未开始执行的策略。"""
         for item in self.items:
-            item._pause_requested = True
+            with item._state_lock:
+                item._pause_requested = True
 
     def resume(self) -> None:
-        """继续尚未开始执行的策略。"""
+        """继续执行被暂停的策略。"""
         for item in self.items:
-            item._pause_requested = False
+            with item._state_lock:
+                item._pause_requested = False
 
     def continue_(self) -> None:
         """继续执行被暂停的策略。"""
         self.resume()
 
+
+
     def kill(self) -> None:
-        """终止尚未开始执行的策略，并取消暂停。"""
         for item in self.items:
-            item._kill_requested = True
-            item._pause_requested = False
+            with item._state_lock:
+                item._kill_requested = True
+                item._pause_requested = False
 
     def run_item(self, item: Item):
         """执行单个 item，并同步其执行结果。"""
