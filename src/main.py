@@ -60,13 +60,34 @@ class ChooseWindow:
         category: Optional["util.Category"] = None
         category_var: Optional[tkinter.BooleanVar] = None
         checked_var: tkinter.BooleanVar = field(init=False)
+        _syncing: bool = field(default=False, init=False, repr=False)
 
-        def on_item_toggle(self):
-            self.obj.checked.set(self.checked_var.get())
-            # 调用 ViewModel 同步类别全选状态
-            self.viewmodel.toggle_item(self.obj)
+        def _apply_from_var(self) -> None:
+            """UI -> Model 的唯一写入路径。"""
+            self.viewmodel.set_item_checked(self.obj, self.checked_var.get())
             if self.category_var is not None and self.category is not None:
-                self.category_var.set(self.category.checked.get())
+                self.category_var.set(bool(self.category.checked.get()))
+
+        def on_item_toggle(self) -> None:
+            # command 在 variable 更新之后触发，此处读到的一定是新值。
+            self._apply_from_var()
+
+        def _on_var_write(self, *_args) -> None:
+            if self._syncing:
+                return
+            # 程序化同步会被上面的幂等判断或静默标记拦截。
+            if bool(self.checked_var.get()) == bool(self.obj.checked.get()):
+                return
+            self._apply_from_var()
+
+        def set_checked(self, value: bool) -> None:
+            """供全选、取消全选和父级同步调用，静默更新 UI 与模型。"""
+            self._syncing = True
+            try:
+                self.checked_var.set(bool(value))
+            finally:
+                self._syncing = False
+            self.obj.checked.set(bool(value))
 
         def on_strategy_selected(self, event: tkinter.Event):
             selected = self.strategy_var.get()
@@ -80,12 +101,18 @@ class ChooseWindow:
             self.frame = ttk.Frame(self.root, padding=10)
             self.frame.pack(fill=tkinter.X, padx=14, pady=8)
             self.strategies = [s[0] for s in self.obj.strategies]
-            btn_state = "normal" if getattr(self.obj, "allowed", True) else "disabled"
-            self.checked_var = tkinter.BooleanVar(master=self.root, value=self.obj.checked.get())
-            ttk.Checkbutton(
+            self.checked_var = tkinter.BooleanVar(
+                master=self.frame, value=bool(self.obj.checked.get())
+            )
+            self.checked_var.trace_add("write", self._on_var_write)
+            self.check_widget = ttk.Checkbutton(
                 self.frame, text="", variable=self.checked_var,
-                command=self.on_item_toggle, state=btn_state
-            ).pack(side=tkinter.LEFT, padx=(0, 8))
+                command=self.on_item_toggle,
+            )
+            self.check_widget.pack(side=tkinter.LEFT, padx=(0, 8))
+            # allowed=False 不再阻断复选框；执行阶段仍由 Item.execute/allowed 控制。
+            if not getattr(self.obj, "allowed", True):
+                self.check_widget.configure(state="normal")
             if self.obj.icon:
                 icon_path = Path(self.obj.icon)
                 if not icon_path.is_absolute():
@@ -126,22 +153,39 @@ class ChooseWindow:
         item_frames: List["ChooseWindow.ItemFrame"] = field(default_factory=list)
 
         checked_var: tkinter.BooleanVar = field(init=False)
+        _syncing: bool = field(default=False, init=False, repr=False)
 
-        def on_category_toggle(self):
-            self.obj.checked.set(self.checked_var.get())
-            self.viewmodel.toggle_category(self.obj)
+        def _apply_from_var(self) -> None:
+            self.viewmodel.set_category_checked(self.obj, self.checked_var.get())
             self.sync_checkbox_values()
 
-        def sync_checkbox_values(self):
-            self.checked_var.set(self.obj.checked.get())
+        def on_category_toggle(self) -> None:
+            self._apply_from_var()
+
+        def _on_var_write(self, *_args) -> None:
+            if self._syncing:
+                return
+            if bool(self.checked_var.get()) == bool(self.obj.checked.get()):
+                return
+            self._apply_from_var()
+
+        def sync_checkbox_values(self) -> None:
+            self._syncing = True
+            try:
+                self.checked_var.set(bool(self.obj.checked.get()))
+            finally:
+                self._syncing = False
             for item_frame in self.item_frames:
-                item_frame.checked_var.set(item_frame.obj.checked.get())
+                item_frame.set_checked(item_frame.obj.checked.get())
 
         def render(self):
             self.item_frames = []
             self.frame = ttk.LabelFrame(self.root, text=self.obj.name, padding=16)
             self.frame.pack(fill=tkinter.X, padx=14, pady=10)
-            self.checked_var = tkinter.BooleanVar(master=self.root, value=self.obj.checked.get())
+            self.checked_var = tkinter.BooleanVar(
+                master=self.frame, value=bool(self.obj.checked.get())
+            )
+            self.checked_var.trace_add("write", self._on_var_write)
             ttk.Checkbutton(
                 self.frame, text="", variable=self.checked_var,
                 command=self.on_category_toggle

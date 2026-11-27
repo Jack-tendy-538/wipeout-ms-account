@@ -14,6 +14,16 @@ class ChooseViewModel:
         all_checked = all(it.checked.get() for it in category.items)
         category.checked.set(all_checked)
 
+    def set_item_checked(self, item: Item, value: bool) -> None:
+        """UI 写入条目的唯一入口：先改条目，再同步类别。"""
+        item.checked.set(bool(value))
+        self.toggle_item(item)
+
+    def set_category_checked(self, category: Category, value: bool) -> None:
+        """UI 写入类别的唯一入口：先改类别，再下发条目。"""
+        category.checked.set(bool(value))
+        self.toggle_category(category)
+
     def toggle_category(self, category: Category) -> None:
         """当类别复选框变化时，同步其下所有条目的选中状态。"""
         checked = category.checked.get()

@@ -29,6 +29,13 @@ class BoolVar:
     def set(self, value: bool) -> None:
         self._value = bool(value)
 
+    def toggle(self) -> bool:
+        self._value = not self._value
+        return self._value
+
+    def __bool__(self) -> bool:
+        return self._value
+
 @dataclass
 class Category:
     name: str
@@ -350,17 +357,20 @@ class InitFileModifier:
 
         self.save()
 
+
 def new_cat(name):
     create_cat(name)
     init_file = Path("strategies") / "__init__.py"
     init_modifier = InitFileModifier(init_file)
     init_modifier.add_import(name)
 
+
 def main():
     parser = argparse.ArgumentParser(usage="util.py:帮助在项目中添加category")
     parser.add_argument("-new-cat", help="category name", dest="name")
     args = parser.parse_args()
     new_cat(args.name)
+
 
 if __name__ == "__main__":
     main()
